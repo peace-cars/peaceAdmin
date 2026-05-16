@@ -1,0 +1,31 @@
+{
+  "common": {
+    "dashboard": "ዳሽቦርድ",
+    "operations": "ስራዎች",
+    "commissions": "ኮሚሽኖች",
+    "inventory": "የመጋዘን አስተዳዳሪ",
+    "staff": "የቅርንጫፍ ሰራተኞች",
+    "logout": "ውጣ",
+    "search": "ቪን፣ ደንበኛ ወይም መሪ ይፈልጉ...",
+    "notifications": "ማሳወቂያዎች",
+    "admin_portal": "የአስተዳዳሪ ፖርታል"
+  },
+  "dashboard": {
+    "title": "የመርከቦች አጠቃላይ እይታ",
+    "total_personnel": "ጠቅላላ ሰራተኞች",
+    "active_staff": "ንቁ ሰራተኞች"
+  },
+  "acquisitions": {
+    "title": "የንብረት ግዥ መዝገብ",
+    "subtitle": "የግል ንብረት ግዢዎችን ከመጀመሪያ እስከ መጨረሻ ማስተዳደር።",
+    "all_stages": "ሁሉም ደረጃዎች",
+    "inbound": "ገቢ ንብረቶች",
+    "evaluation": "ቴክኒካዊ ግምገማ",
+    "authorization": "ከፍተኛ ፈቃድ",
+    "settlement": "የግዥ ክፍያ",
+    "secured": "መዝገብ ተጠብቋል",
+    "empty_registry": "ባዶ መዝገብ",
+    "filter_placeholder": "መዝገቡን ያጣሩ...",
+    "initiate_asset": "ንብረት ያስጀምሩ"
+  }
+}

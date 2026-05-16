@@ -1,0 +1,31 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "operations": "Operations",
+    "commissions": "Commissions",
+    "inventory": "Stock Manager",
+    "staff": "Branch Roster",
+    "logout": "Logout",
+    "search": "Search VIN, Customer, or Lead...",
+    "notifications": "Notifications",
+    "admin_portal": "Admin Portal"
+  },
+  "dashboard": {
+    "title": "Fleet Overview",
+    "total_personnel": "Total Personnel",
+    "active_staff": "Active Staff"
+  },
+  "acquisitions": {
+    "title": "Asset Procurement Registry",
+    "subtitle": "End-to-end management of private asset acquisitions.",
+    "all_stages": "All Stages",
+    "inbound": "Inbound Assets",
+    "evaluation": "Technical Evaluation",
+    "authorization": "Senior Authorization",
+    "settlement": "Procurement Settlement",
+    "secured": "Registry Secured",
+    "empty_registry": "Empty Registry",
+    "filter_placeholder": "Filter Registry...",
+    "initiate_asset": "Initiate Asset"
+  }
+}

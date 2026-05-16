@@ -1,0 +1,51 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Definitions for Gradients -->
+  <defs>
+    <!-- Main Outer Arc Gradient -->
+    <linearGradient id="outerArcGradient" x1="256" y1="100" x2="256" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+
+    <!-- Internal Fluid Ribbon Gradient -->
+    <linearGradient id="ribbonGradient" x1="150" y1="350" x2="400" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F46E5" /> <!-- Purple/Blue start -->
+      <stop offset="30%" stop-color="#9333EA" /> <!-- Purple -->
+      <stop offset="60%" stop-color="#EC4899" /> <!-- Pink -->
+      <stop offset="85%" stop-color="#F97316" /> <!-- Orange -->
+      <stop offset="100%" stop-color="#FB923C" /> <!-- Light Orange -->
+    </linearGradient>
+
+    <!-- Inner Speedometer Arc Gradient -->
+    <linearGradient id="speedoArcGradient" x1="250" y1="200" x2="350" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FBBF24" /> <!-- Yellow/Orange -->
+      <stop offset="100%" stop-color="#F97316" /> <!-- Orange -->
+    </linearGradient>
+    
+    <!-- Shadow effect for depth -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5" />
+      <feOffset dx="2" dy="4" result="offsetblur" />
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3" />
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer Dark Blue Shell -->
+  <path d="M150 300C150 180 220 100 350 100C450 100 400 280 380 350L360 380C360 380 400 250 350 180C300 110 200 150 150 300Z" fill="url(#outerArcGradient)" filter="url(#shadow)" />
+
+  <!-- Internal Gradient Ribbon (The Fluid "P" Body) -->
+  <path d="M150 300C150 380 200 450 250 430C300 410 350 350 400 350C450 350 430 430 380 430C330 430 250 350 200 300C150 250 180 180 250 160C320 140 380 180 380 250L350 250C350 210 310 180 250 190C190 200 180 250 200 300C220 350 300 410 350 410C400 410 420 380 400 350C380 320 300 300 200 350C150 380 140 330 150 300Z" fill="url(#ribbonGradient)" />
+
+  <!-- Inner Speedometer Gauge Arc -->
+  <path d="M240 240C240 200 280 160 340 180C360 190 380 220 380 250" stroke="url(#speedoArcGradient)" stroke-width="20" stroke-linecap="round" fill="none" opacity="0.9" />
+
+  <!-- Speedometer Needle -->
+  <circle cx="300" cy="240" r="15" fill="#111827" />
+  <path d="M300 240L340 210" stroke="#111827" stroke-width="12" stroke-linecap="round" />
+</svg>

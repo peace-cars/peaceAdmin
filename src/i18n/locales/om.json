@@ -1,0 +1,31 @@
+{
+  "common": {
+    "dashboard": "Daashboordii",
+    "operations": "Hojiiwwan",
+    "commissions": "Komishiniiwwan",
+    "inventory": "Bulchaa Kuusaa",
+    "staff": "Hojjettoota Damee",
+    "logout": "Ba'i",
+    "search": "VIN, Maamila, ykn Dura-bu'aa barbaadi...",
+    "notifications": "Beeksisa",
+    "admin_portal": "Poortaalii Bulchiinsaa"
+  },
+  "dashboard": {
+    "title": "Ilaalcha Waliigalaa Konkolaataa",
+    "total_personnel": "Hojjettoota Waliigalaa",
+    "active_staff": "Hojjettoota Hojii Irra Jiran"
+  },
+  "acquisitions": {
+    "title": "Galmee Bittaa Qabeenyaa",
+    "subtitle": "Bittaa qabeenya dhuunfaa madaaluu fi bulchuu.",
+    "all_stages": "Sadarkaa Hundumaa",
+    "inbound": "Qabeenya Seenaa Jiru",
+    "evaluation": "Madaallii Teeknikaa",
+    "authorization": "Hayyama Ol'aanaa",
+    "settlement": "Kaffaltii Bittaa",
+    "secured": "Galmeen Mirkanaa'e",
+    "empty_registry": "Galmee Duwwaa",
+    "filter_placeholder": "Galmee sakatta'i...",
+    "initiate_asset": "Qabeenya Jalqabi"
+  }
+}

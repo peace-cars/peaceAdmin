@@ -24,7 +24,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [scope, setScope] = useState<any>(null);
-  const role = sessionStorage.getItem('admin_role');
+  const role = localStorage.getItem('admin_role');
 
   useEffect(() => {
     if (!session?.access_token) return;
@@ -51,7 +51,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           setScope(data);
-          if (data.branchName) sessionStorage.setItem('admin_location', data.branchName);
+          if (data.branchName) localStorage.setItem('admin_location', data.branchName);
         }
       } catch (e) {
         console.error("Scope Sync Failed", e);
@@ -108,7 +108,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { session } = useAuth();
-  const role = sessionStorage.getItem('admin_role');
+  const role = localStorage.getItem('admin_role');
 
   return (
     <Router>

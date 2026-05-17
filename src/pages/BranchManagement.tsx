@@ -12,7 +12,7 @@ import { cn } from '../lib/utils';
 
 export default function BranchManagement() {
   const { session } = useAuth();
-  const role = sessionStorage.getItem('admin_role') || 'DISTRICT_MANAGER';
+  const role = localStorage.getItem('admin_role') || 'DISTRICT_MANAGER';
 
   const [branches, setBranches] = useState<any[]>([]);
   const [people, setPeople] = useState<any[]>([]);

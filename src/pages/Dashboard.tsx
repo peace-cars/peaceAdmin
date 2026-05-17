@@ -27,8 +27,8 @@ type RoleType = "USER" | "BROKER" | "STAFF" | "DISTRICT_MANAGER" | "GENERAL_MANA
 
 export default function Dashboard() {
   const { session } = useAuth();
-  const role = (sessionStorage.getItem('admin_role') as RoleType) || "DISTRICT_MANAGER";
-  const LOCATION_NAME = sessionStorage.getItem('admin_location') || "Central Registry Hub";
+  const role = (localStorage.getItem('admin_role') as RoleType) || "DISTRICT_MANAGER";
+  const LOCATION_NAME = localStorage.getItem('admin_location') || "Central Registry Hub";
   const ADMIN_NAME = session?.profile?.full_name || "Administrator";
 
   // Global Dashboard State

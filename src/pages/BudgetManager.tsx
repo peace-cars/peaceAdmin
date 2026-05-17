@@ -16,7 +16,7 @@ export default function BudgetManager() {
   const { session } = useAuth();
   const [budgets, setBudgets] = useState<any[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<any>(null);
-  const role = sessionStorage.getItem('admin_role');
+  const role = localStorage.getItem('admin_role');
 
   const fetchBudgets = async () => {
     if (!session) return;

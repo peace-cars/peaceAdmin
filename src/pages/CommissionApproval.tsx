@@ -17,7 +17,7 @@ export default function CommissionApproval() {
   const { session } = useAuth();
   const [commissions, setCommissions] = useState<any[]>([]);
   const [selectedCommission, setSelectedCommission] = useState<any>(null);
-  const role = sessionStorage.getItem('admin_role');
+  const role = localStorage.getItem('admin_role');
 
   const fetchCommissions = async () => {
     try {

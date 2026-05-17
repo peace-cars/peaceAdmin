@@ -2,9 +2,8 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  // Standard emulator loopback
-  if (Capacitor.getPlatform() === 'android') return 'http://10.0.2.2:3000';
-  return 'http://localhost:3000';
+  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  return isLocalhost ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
 };
 
 export const API_URL = getApiUrl();

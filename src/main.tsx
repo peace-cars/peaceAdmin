@@ -10,7 +10,9 @@ const originalFetch = window.fetch;
 window.fetch = function (input: any, init?: any) {
   let url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : (input && input.url ? input.url : ''));
   if (url.startsWith('http://localhost:3000')) {
-    const apiBase = import.meta.env.VITE_API_URL || (Capacitor.getPlatform() === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000');
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const defaultApi = isLocalhost ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
+    const apiBase = import.meta.env.VITE_API_URL || defaultApi;
     const newUrl = url.replace('http://localhost:3000', apiBase);
     if (typeof input === 'string') {
       input = newUrl;

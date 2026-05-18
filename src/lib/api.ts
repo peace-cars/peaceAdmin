@@ -4,7 +4,7 @@ const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   const isNative = Capacitor.isNativePlatform();
   const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  return (isLocalhost && !isNative) ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}` : 'https://backend-eabm.onrender.com';
+  return (isLocalhost && !isNative) ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
 };
 
 export const API_URL = getApiUrl();

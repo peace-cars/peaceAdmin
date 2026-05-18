@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1013978501823",
+    "project_id": "peace-cars",
+    "storage_bucket": "peace-cars.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1013978501823:android:a6c9a04b5dc57cb75fec0a",
+        "android_client_info": {
+          "package_name": "com.peace_cars.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpJraL1_zBlFHhhfDUZi9CHvtKyFPqNgw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

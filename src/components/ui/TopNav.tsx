@@ -48,9 +48,6 @@ export const TopNav: React.FC<TopNavProps> = ({
           <span className="text-[14px] font-black text-text-main tracking-tight leading-none uppercase">
             {scope?.branchName || 'PeaceCars'}
           </span>
-          <span className="text-[10px] font-bold text-primary-main/60 tracking-widest uppercase mt-0.5">
-            {scope?.branchName ? 'Active Registry' : 'Control Center'}
-          </span>
       </div>
 
       {/* Center: Search (desktop only) - More integrated design */}
@@ -148,16 +145,6 @@ export const TopNav: React.FC<TopNavProps> = ({
           )}
         </div>
 
-        {/* User Profile */}
-        <div className="flex items-center gap-3 pl-3 ml-1 border-l border-border-subtle/30">
-          <div className="hidden sm:flex flex-col text-right">
-            <p className="text-[13px] font-black text-text-main leading-none">{user?.full_name || 'Administrator'}</p>
-            <p className="text-[10px] text-primary-main/60 font-black uppercase tracking-widest mt-1">{roleLabel}</p>
-          </div>
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-main to-primary-dark text-white flex items-center justify-center font-black text-[13px] shadow-lg shadow-primary-main/20 ring-2 ring-primary-main/10 border border-white/10 active:scale-95 transition-all cursor-pointer">
-            {initials}
-          </div>
-        </div>
       </div>
     </header>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Package, Users, TrendingUp, DollarSign, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, TrendingUp, DollarSign, MessageSquare } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface BottomNavProps {
@@ -8,19 +8,13 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
-  const isGM = role === 'GENERAL_MANAGER';
-
   const navItems = [
     { id: 'dash', label: 'Home', icon: LayoutDashboard, path: '/', exact: true },
     { id: 'pipeline', label: 'Pipeline', icon: TrendingUp, path: '/acquisitions' },
-    { id: 'assets', label: 'Assets', icon: Package, path: '/inventory' },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, path: '/inbox' },
     { id: 'finances', label: 'Finance', icon: DollarSign, path: '/budgets' },
     { id: 'team', label: 'Team', icon: Users, path: '/staff' },
   ];
-
-  if (isGM) {
-    navItems.push({ id: 'vault', label: 'Vault', icon: Shield, path: '/vault' });
-  }
 
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 w-full bg-surface-card border-t border-border-subtle z-[100] px-1" style={{ paddingBottom: 'env(safe-area-inset-bottom, 8px)' }}>

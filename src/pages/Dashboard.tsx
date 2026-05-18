@@ -13,6 +13,7 @@ import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Tooltip } from "../components/ui/Tooltip";
 import { cn } from "../lib/utils";
+import { SkeletonKpi } from "../components/ui/Skeleton";
 
 // Dashboard Sub-components
 import { GeneralManagerView } from "../components/dashboard/GeneralManagerView";
@@ -55,69 +56,79 @@ export default function Dashboard() {
   useEffect(() => {
     if (!session) return;
 
-    // Common Data
-    api.get<any[]>('/staff-performance/leaderboard')
-      .then(data => setLeaderboard(Array.isArray(data) ? data : []))
-      .catch(console.error);
+    setLoadingMetrics(true);
 
-    api.get<any>('/settings')
-      .then(data => { if (data.exchange_rate_usd_etb) setExchangeRate(data.exchange_rate_usd_etb); })
-      .catch(console.error);
+    const promises: Promise<any>[] = [
+      api.get<any[]>('/staff-performance/leaderboard')
+        .then(data => setLeaderboard(Array.isArray(data) ? data : []))
+        .catch(console.error),
+      api.get<any>('/settings')
+        .then(data => { if (data.exchange_rate_usd_etb) setExchangeRate(data.exchange_rate_usd_etb); })
+        .catch(console.error)
+    ];
 
-    // Role-Specific Data
     if (role === 'GENERAL_MANAGER') {
-      setLoadingMetrics(true);
-      Promise.all([
-        api.get<any[]>('/vehicles/profitability'),
-        api.get<any[]>('/locations'),
-        api.get<any[]>('/commission-workflow'),
-        api.get<any[]>('/locations/districts/overview')
-      ]).then(([profitData, locationData, commissionData, districtData]) => {
-        setProfitability(Array.isArray(profitData) ? profitData : []);
-        setBranchCount(Array.isArray(locationData) ? locationData.length : 0);
-        setDmBranches(Array.isArray(locationData) ? locationData : []);
-        setDistrictOverview(Array.isArray(districtData) ? districtData : []);
-        
-        if (Array.isArray(commissionData)) {
-          const pending = commissionData
-            .filter((c: any) => !c.isPaid)
-            .reduce((sum: number, c: any) => sum + (Number(c.amountEtb) || 0), 0);
-          setPendingCommissions(pending);
-        }
-        setLoadingMetrics(false);
-      }).catch(err => {
-        console.error(err);
-        setLoadingMetrics(false);
-      });
+      promises.push(
+        Promise.all([
+          api.get<any[]>('/vehicles/profitability'),
+          api.get<any[]>('/locations'),
+          api.get<any[]>('/commission-workflow'),
+          api.get<any[]>('/locations/districts/overview')
+        ]).then(([profitData, locationData, commissionData, districtData]) => {
+          setProfitability(Array.isArray(profitData) ? profitData : []);
+          setBranchCount(Array.isArray(locationData) ? locationData.length : 0);
+          setDmBranches(Array.isArray(locationData) ? locationData : []);
+          setDistrictOverview(Array.isArray(districtData) ? districtData : []);
+          
+          if (Array.isArray(commissionData)) {
+            const pending = commissionData
+              .filter((c: any) => !c.isPaid)
+              .reduce((sum: number, c: any) => sum + (Number(c.amountEtb) || 0), 0);
+            setPendingCommissions(pending);
+          }
+        }).catch(console.error)
+      );
     }
 
     if (role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER') {
-      api.get<any[]>('/people')
-        .then(data => {
-          const active = Array.isArray(data) ? data.filter((s: any) => s.isActive) : [];
-          setBranchStaff(active);
-        }) 
-        .catch(console.error);
+      promises.push(
+        api.get<any[]>('/people')
+          .then(data => {
+            const active = Array.isArray(data) ? data.filter((s: any) => s.isActive) : [];
+            setBranchStaff(active);
+          }) 
+          .catch(console.error)
+      );
     }
 
     if (role === 'DISTRICT_MANAGER') {
-      api.get<any[]>('/locations')
-        .then(data => setDmBranches(Array.isArray(data) ? data : []))
-        .catch(console.error);
+      promises.push(
+        api.get<any[]>('/locations')
+          .then(data => setDmBranches(Array.isArray(data) ? data : []))
+          .catch(console.error)
+      );
     }
 
     if (role === 'STAFF') {
-      api.get<any[]>('/staff-tasks')
-        .then(data => setStaffTasks(Array.isArray(data) ? data : []))
-        .catch(console.error);
+      promises.push(
+        api.get<any[]>('/staff-tasks')
+          .then(data => setStaffTasks(Array.isArray(data) ? data : []))
+          .catch(console.error)
+      );
     }
 
     const needsPipelineData = role === 'DISTRICT_MANAGER' || role === 'FINANCE_AUDITOR' || role === 'GENERAL_MANAGER';
     if (needsPipelineData) {
-      api.get<any[]>('/staff-budgets').then(data => setBudgets(Array.isArray(data) ? data : [])).catch(console.error);
-      api.get<any[]>('/trade-in-requests').then(data => setTradeIns(Array.isArray(data) ? data : [])).catch(console.error);
-      api.get<any[]>('/vehicles').then(data => setShowroomCount(Array.isArray(data) ? data.length : 0)).catch(console.error);
+      promises.push(
+        api.get<any[]>('/staff-budgets').then(data => setBudgets(Array.isArray(data) ? data : [])).catch(console.error),
+        api.get<any[]>('/trade-in-requests').then(data => setTradeIns(Array.isArray(data) ? data : [])).catch(console.error),
+        api.get<any[]>('/vehicles').then(data => setShowroomCount(Array.isArray(data) ? data.length : 0)).catch(console.error)
+      );
     }
+
+    Promise.all(promises).finally(() => {
+      setLoadingMetrics(false);
+    });
   }, [session, role]);
 
   // Actions
@@ -241,6 +252,9 @@ export default function Dashboard() {
               exchangeRate={exchangeRate}
               tradeIns={tradeIns}
               districtOverview={districtOverview}
+              dmBranches={dmBranches}
+              budgets={budgets}
+              branchStaff={branchStaff}
               onUpdateExchangeRate={updateExchangeRate}
               onApproveListing={approveListing}
               onApprove={handleApproveLead}
@@ -254,45 +268,56 @@ export default function Dashboard() {
           <>
             {/* DM KPI Cards — Square, Colorful, Small Icons */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                <div className="w-10 h-10 bg-primary-main/10 rounded-xl flex items-center justify-center text-primary-main">
-                  <ClipboardCheck size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-text-main tracking-tight">{pendingReviewCount}</p>
-                  <p className="text-[13px] text-text-muted mt-0.5">Pending Review</p>
-                </div>
-              </div>
+              {loadingMetrics ? (
+                <>
+                  <SkeletonKpi className="h-28" />
+                  <SkeletonKpi className="h-28" />
+                  <SkeletonKpi className="h-28" />
+                  <SkeletonKpi className="h-28" />
+                </>
+              ) : (
+                <>
+                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
+                    <div className="w-10 h-10 bg-primary-main/10 rounded-xl flex items-center justify-center text-primary-main">
+                      <ClipboardCheck size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-text-main tracking-tight">{pendingReviewCount}</p>
+                      <p className="text-[13px] text-text-muted mt-0.5">Pending Review</p>
+                    </div>
+                  </div>
 
-              <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center text-success">
-                  <CarFront size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-text-main tracking-tight">{showroomCount}</p>
-                  <p className="text-[13px] text-text-muted mt-0.5">Showroom Assets</p>
-                </div>
-              </div>
+                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
+                    <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center text-success">
+                      <CarFront size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-text-main tracking-tight">{showroomCount}</p>
+                      <p className="text-[13px] text-text-muted mt-0.5">Showroom Assets</p>
+                    </div>
+                  </div>
 
-              <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center text-warning">
-                  <Zap size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-text-main tracking-tight">{newLeadCount}</p>
-                  <p className="text-[13px] text-text-muted mt-0.5">New Leads</p>
-                </div>
-              </div>
+                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
+                    <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center text-warning">
+                      <Zap size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-text-main tracking-tight">{newLeadCount}</p>
+                      <p className="text-[13px] text-text-muted mt-0.5">New Leads</p>
+                    </div>
+                  </div>
 
-              <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                <div className="w-10 h-10 bg-primary-main/10 rounded-xl flex items-center justify-center text-primary-main">
-                  <Users size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-text-main tracking-tight">{branchStaff.filter(s => s.role === 'STAFF').length}</p>
-                  <p className="text-[13px] text-text-muted mt-0.5">Branch Staff</p>
-                </div>
-              </div>
+                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
+                    <div className="w-10 h-10 bg-primary-main/10 rounded-xl flex items-center justify-center text-primary-main">
+                      <Users size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-text-main tracking-tight">{branchStaff.filter(s => s.role === 'STAFF').length}</p>
+                      <p className="text-[13px] text-text-muted mt-0.5">Branch Staff</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* DM Leads Management */}
@@ -303,6 +328,7 @@ export default function Dashboard() {
               branchStaff={branchStaff}
               dmBranches={dmBranches}
               role={role}
+              loadingMetrics={loadingMetrics}
               activeQueueTab={'Authorization Pending'}
               onAssignTask={assignTaskToStaff}
               onApprove={handleApproveLead}

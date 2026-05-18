@@ -3,6 +3,7 @@ import { Activity, CarFront, User, ChevronRight, MapPin, Clock, Phone } from 'lu
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../lib/utils';
+import { SkeletonCard, SkeletonRow } from '../ui/Skeleton';
 
 interface DistrictManagerViewProps {
   tradeIns: any[];
@@ -12,6 +13,7 @@ interface DistrictManagerViewProps {
   dmBranches?: any[];
   activeQueueTab: string;
   role?: string;
+  loadingMetrics?: boolean;
   onAssignTask: (tradeInId: string, staffId: string) => void;
   onApprove: (tradeInId: string, offerPrice: number) => void;
   onReject: (tradeInId: string, reason: string) => void;
@@ -27,6 +29,7 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
   dmBranches = [],
   activeQueueTab,
   role,
+  loadingMetrics,
   onAssignTask,
   onApprove,
   onReject,
@@ -35,6 +38,27 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = React.useState('Authorization Pending');
   const [selectedBranchId, setSelectedBranchId] = React.useState('ALL');
+
+  if (loadingMetrics) {
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-col gap-2">
+          <div className="h-6 w-1/4 bg-border-subtle/30 animate-pulse rounded" />
+          <div className="h-4 w-1/3 bg-border-subtle/30 animate-pulse rounded" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        <div className="space-y-2 pt-4">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </div>
+      </div>
+    );
+  }
 
   const tabs = [
     { id: 'Authorization Pending', label: 'Pending', filter: (item: any) => item.status === 'NEW_LEAD' || item.status === 'MANAGER_REVIEW' || item.status === 'INSPECTION_PENDING' },

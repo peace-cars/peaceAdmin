@@ -17,6 +17,7 @@
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
     "@capacitor/ios": "^8.3.4",
+    "@capacitor/push-notifications": "^8.1.1",
     "@supabase/supabase-js": "^2.101.0",
     "@tailwindcss/vite": "^4.2.2",
     "axios": "^1.14.0",

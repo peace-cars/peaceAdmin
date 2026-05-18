@@ -7,6 +7,7 @@ import { useAuth } from "../lib/auth";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SectionCard } from "../components/ui/SectionCard";
 import { cn } from "../lib/utils";
+import { api } from "../lib/api";
 
 export default function AssetLibrary() {
   const { session } = useAuth();
@@ -19,17 +20,10 @@ export default function AssetLibrary() {
     if (!session) return;
     const fetchAssets = async () => {
       try {
-        const [vehiclesRes, budgetsRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/vehicles`, {
-            headers: { 'Authorization': `Bearer ${session.access_token}` }
-          }),
-          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/staff-budgets`, {
-            headers: { 'Authorization': `Bearer ${session.access_token}` }
-          })
+        const [vehicles, budgets] = await Promise.all([
+          api.get<any[]>('/vehicles'),
+          api.get<any[]>('/budgets')
         ]);
-
-        const vehicles = await vehiclesRes.json();
-        const budgets = await budgetsRes.json();
 
         const allAssets: any[] = [];
 
@@ -119,7 +113,7 @@ export default function AssetLibrary() {
               onClick={() => setTypeFilter(f)}
               className={cn(
                 "px-4 py-2 rounded-lg text-[11px] font-medium transition-all border shrink-0",
-                typeFilter === f ? "bg-text-main border-text-main text-bg shadow-md" : "bg-surface-card border-border-subtle/50 text-text-muted/60 hover:bg-bg-secondary"
+                typeFilter === f ? "bg-primary-main border-primary-main text-[#FFFFFF] shadow-md" : "bg-surface-card border-border-subtle/50 text-text-muted/60 hover:bg-bg-secondary"
               )}
             >
               {f}

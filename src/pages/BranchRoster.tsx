@@ -9,6 +9,7 @@ import { TextField, SelectField } from '../components/ui/FormControls';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/utils';
+import { SkeletonCard } from '../components/ui/Skeleton';
 
 export default function BranchRoster() {
   const { session } = useAuth();
@@ -190,7 +191,7 @@ export default function BranchRoster() {
                  setFormData({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: 1.0, date_of_birth: '' });
                  setIsHiring(true);
                }} 
-               className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all"
+               className="rounded-xl h-11 px-6 bg-primary-main text-[#FFFFFF] font-bold text-[12px] shadow-xl active:brightness-90 transition-all"
              >
                 Onboard Personnel
              </Button>
@@ -206,53 +207,71 @@ export default function BranchRoster() {
         <KpiTile label="Registry Link" value="Stable" icon={<CheckCircle2 size={14} />} className="rounded-xl p-4 h-28" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((member) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {loading ? (
+          Array(6).fill(0).map((_, i) => <SkeletonCard key={i} />)
+        ) : filtered.map((member) => (
           <div
             key={member.id}
             onClick={() => { setViewingStaff(member); fetchStaffTasks(member.id); }}
             className={cn(
-              "bg-surface-card rounded-2xl shadow-sm border border-border-subtle hover:shadow-md p-5 md:p-6 flex flex-col group transition-all relative overflow-hidden cursor-pointer hover:border-primary-main/30 hover:-translate-y-1",
+              "bg-surface-card rounded-2xl shadow-sm border border-border-subtle hover:shadow-md p-3.5 flex flex-col group transition-all relative overflow-hidden cursor-pointer hover:border-primary-main/30 md:hover:-translate-y-0.5",
               !member.isOnline && "opacity-70 bg-bg-secondary/20 border-dashed"
             )}
           >
+            {/* Online indicator strip */}
+            <div className={cn(
+              "absolute left-0 top-0 bottom-0 w-1.5 transition-colors",
+              member.isOnline ? "bg-success" : "bg-border-subtle"
+            )} />
+
             {/* Swipe-to-action hint gradient for mobile */}
             <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-indigo-50 to-transparent opacity-0 group-active:opacity-100 transition-opacity pointer-events-none md:hidden" />
 
-            <div className="flex items-start justify-between mb-5">
-              <div className="flex items-center gap-4">
+            <div className="flex items-start justify-between ml-2">
+              <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className={cn(
-                    "w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center text-sm font-bold shadow-inner border transition-all overflow-hidden",
+                    "w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shadow-inner border transition-all overflow-hidden",
                     member.isOnline ? 'bg-primary-main/10 text-primary-main border-primary-main/10' : 'bg-surface-card text-text-muted/30 border-border-subtle'
                   )}>
                     {member.avatar ? <img src={member.avatar} className="w-full h-full object-cover" /> : member.fullName.split(' ').map((n: string) => n[0]).join('')}
                   </div>
-                   {member.isOnline && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success border-2 border-bg rounded-full shadow-sm" />}
                 </div>
-                <div className="space-y-1 md:space-y-0.5">
-                  <h3 className="text-base md:text-sm font-bold text-text-main tracking-tight group-hover:text-primary-main transition-colors">{member.fullName}</h3>
-                  <div className="flex items-center gap-2">
-                    <p className="text-primary-main text-[13px] md:text-[12px] font-medium">{member.role?.replace(/_/g, ' ')}</p>
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold text-text-main tracking-tight group-hover:text-primary-main transition-colors leading-none">{member.fullName}</h3>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <p className="text-primary-main text-[11px] font-medium leading-none">{member.role?.replace(/_/g, ' ')}</p>
                     <span className="w-1 h-1 bg-border-subtle rounded-full" />
-                    <p className="text-text-muted text-[13px] md:text-[12px] font-medium">Age: {calculateAge(member.dateOfBirth)}</p>
+                    <p className="text-text-muted text-[11px] font-medium leading-none">Age: {calculateAge(member.dateOfBirth)}</p>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-3 gap-2 md:gap-3 mb-5 md:mb-4">
-              <div className="bg-bg-secondary/30 rounded-xl p-3 md:p-2.5 text-center border border-border-subtle/50"><p className="text-[12px] md:text-[11px] text-text-muted uppercase font-bold tracking-widest mb-1">Active</p><p className="text-lg md:text-base font-bold text-text-main">{member.activeInspections}</p></div>
-              <div className="bg-bg-secondary/30 rounded-xl p-3 md:p-2.5 text-center border border-border-subtle/50"><p className="text-[12px] md:text-[11px] text-text-muted uppercase font-bold tracking-widest mb-1">Done</p><p className="text-lg md:text-base font-bold text-text-main">{member.totalDealsClosed}</p></div>
-              <div className="bg-bg-secondary/30 rounded-xl p-3 md:p-2.5 text-center border border-border-subtle/50"><p className="text-[12px] md:text-[11px] text-text-muted uppercase font-bold tracking-widest mb-1">Rating</p><p className="text-lg md:text-base font-bold text-primary-main">{member.averageRating}</p></div>
-            </div>
-
-             <div className="flex items-center justify-between pt-4 md:pt-3 border-t border-border-subtle/30 mt-auto">
-              <div className="flex items-center gap-2 md:gap-1.5" onClick={e => e.stopPropagation()}>
-                <button onClick={() => { setSelectedStaff(member); setFormData({ fullName: member.fullName, phone: member.phone, role: member.role, locationId: member.locationId, commissionTier: 1.0, date_of_birth: member.dateOfBirth || '' }); setIsEditing(true); setIsHiring(true); }} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-xl md:rounded-lg bg-bg-secondary border border-border-subtle text-text-muted hover:text-primary-main hover:bg-bg transition-all shadow-sm md:shadow-none"><Edit3 size={14} className="md:w-[13px]" /></button>
-                <button onClick={() => handleDeactivate(member.id)} className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center rounded-xl md:rounded-lg bg-error-main/10 md:bg-bg-secondary border border-error-main/20 md:border-border-subtle text-error-main md:text-text-muted md:hover:text-error-main hover:bg-bg transition-all shadow-sm md:shadow-none"><Trash2 size={14} className="md:w-[13px]" /></button>
+              {/* Actions - moved to right side and made more compact */}
+              <div className="flex flex-col items-end gap-1.5 z-10" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity md:translate-y-0 translate-y-2 group-hover:translate-y-0">
+                  <button onClick={() => { setSelectedStaff(member); setFormData({ fullName: member.fullName, phone: member.phone, role: member.role, locationId: member.locationId, commissionTier: 1.0, date_of_birth: member.dateOfBirth || '' }); setIsEditing(true); setIsHiring(true); }} className="w-7 h-7 flex items-center justify-center rounded-lg bg-bg-secondary hover:text-primary-main hover:bg-primary-main/10 transition-all text-text-muted"><Edit3 size={12} /></button>
+                  <button onClick={() => handleDeactivate(member.id)} className="w-7 h-7 flex items-center justify-center rounded-lg bg-bg-secondary hover:text-error-main hover:bg-error-main/10 transition-all text-text-muted"><Trash2 size={12} /></button>
+                </div>
+                <a href={`tel:${member.phone}`} className="flex items-center gap-1 text-[11px] font-bold text-text-muted hover:text-primary-main transition-colors bg-bg-secondary px-2 py-1 rounded-md mt-auto"><Phone size={10} /> {member.phone}</a>
               </div>
-              <a href={`tel:${member.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-2 text-[11px] md:text-[13px] font-bold text-text-main md:text-text-muted hover:text-primary-main transition-colors font-medium bg-bg-secondary md:bg-transparent px-3 py-1.5 md:p-0 rounded-lg"><Phone size={12} className="md:w-[11px]" /> {member.phone}</a>
+            </div>
+
+            {/* Compact Stats Row */}
+            <div className="grid grid-cols-3 gap-2 mt-3 ml-2">
+              <div className="bg-bg-secondary/50 rounded-lg p-2 text-center border border-border-subtle/30 flex items-center justify-center gap-2">
+                <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Active</span>
+                <span className="text-sm font-bold text-text-main leading-none">{member.activeInspections}</span>
+              </div>
+              <div className="bg-bg-secondary/50 rounded-lg p-2 text-center border border-border-subtle/30 flex items-center justify-center gap-2">
+                <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Done</span>
+                <span className="text-sm font-bold text-text-main leading-none">{member.totalDealsClosed}</span>
+              </div>
+              <div className="bg-bg-secondary/50 rounded-lg p-2 text-center border border-border-subtle/30 flex items-center justify-center gap-2">
+                <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Rating</span>
+                <span className="text-sm font-bold text-primary-main leading-none">{member.averageRating}</span>
+              </div>
             </div>
           </div>
         ))}

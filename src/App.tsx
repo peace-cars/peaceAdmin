@@ -18,11 +18,18 @@ import SoldArchive from './pages/SoldArchive';
 import Notifications from './pages/Notifications';
 import { AppShell } from './components/ui/AppShell';
 import { API_URL } from './lib/api';
+import { initializePushNotifications } from './lib/push';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading, logout } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      initializePushNotifications(session.user.id);
+    }
+  }, [session]);
   const [scope, setScope] = useState<any>(null);
   const role = localStorage.getItem('admin_role');
 
@@ -106,9 +113,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   );
 }
 
+import Splash from './components/ui/Splash';
+
 function App() {
   const { session } = useAuth();
   const role = localStorage.getItem('admin_role');
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <Splash onComplete={() => setShowSplash(false)} />;
+  }
 
   return (
     <Router>

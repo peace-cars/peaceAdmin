@@ -19,7 +19,7 @@ export default function StaffReports() {
     if (!session) return;
     const fetchMetrics = async () => {
       try {
-        const res = await fetch('http://localhost:3000/staff-performance/leaderboard', {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/staff-performance/leaderboard`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         const data = await res.json();

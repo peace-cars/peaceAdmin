@@ -15,7 +15,7 @@ const Notifications: React.FC = () => {
     if (!session?.access_token) return;
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/notifications', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/notifications`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       if (res.ok) {
@@ -35,7 +35,7 @@ const Notifications: React.FC = () => {
 
   const markAllRead = async () => {
     if (!session?.user?.id || !session?.access_token) return;
-    await fetch('http://localhost:3000/notifications/mark-all-read', {
+    await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/notifications/mark-all-read`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 

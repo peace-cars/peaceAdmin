@@ -40,7 +40,7 @@ export default function ImageUpload({
         formData.append('folder', folder);
 
         // Upload via our backend proxy to bypass RLS issues
-        const response = await fetch('http://localhost:3000/storage/upload', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`

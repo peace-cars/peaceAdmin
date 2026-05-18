@@ -125,7 +125,7 @@ export const DetailedInspectionModal: React.FC<DetailedInspectionModalProps> = (
       formData.append('bucket', 'vehicles');
       formData.append('folder', `inspections/${task.trade_in_id}`);
 
-      const response = await fetch('http://localhost:3000/storage/upload', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session.access_token}` },
         body: formData

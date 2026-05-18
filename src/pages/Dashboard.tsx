@@ -243,6 +243,8 @@ export default function Dashboard() {
               districtOverview={districtOverview}
               onUpdateExchangeRate={updateExchangeRate}
               onApproveListing={approveListing}
+              onApprove={handleApproveLead}
+              onReject={handleRejectLead}
             />
             <div className="my-10" />
           </>

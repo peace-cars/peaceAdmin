@@ -10,12 +10,12 @@ const originalFetch = window.fetch;
 window.fetch = async function (input: any, init?: any) {
   let url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : (input && input.url ? input.url : ''));
   
-  if (url.startsWith('http://localhost:3000')) {
+  if (url.startsWith(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}`)) {
     const isNative = Capacitor.isNativePlatform();
     const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const defaultApi = (isLocalhost && !isNative) ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
+    const defaultApi = (isLocalhost && !isNative) ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}` : 'https://backend-eabm.onrender.com';
     const apiBase = import.meta.env.VITE_API_URL || defaultApi;
-    url = url.replace('http://localhost:3000', apiBase);
+    url = url.replace(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}`, apiBase);
   }
 
   // If on native platform, bypass the browser WebView stack completely using CapacitorHttp

@@ -44,7 +44,7 @@ export default function SupportInbox() {
 
   const fetchConversations = async () => {
     try {
-      const res = await fetch('http://localhost:3000/messages/conversations', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/conversations`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) { setConversations(await res.json()); }
@@ -54,7 +54,7 @@ export default function SupportInbox() {
 
   const fetchMessages = async (convId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/messages/${convId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/${convId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
       if (res.ok) { setMessages(await res.json()); }
@@ -65,7 +65,7 @@ export default function SupportInbox() {
     e.preventDefault();
     if (!inputText.trim() || !selectedConvId) return;
     try {
-      const res = await fetch('http://localhost:3000/messages', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ conversationId: selectedConvId, text: inputText })

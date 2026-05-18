@@ -15,6 +15,8 @@ interface GeneralManagerViewProps {
   districtOverview?: any[];
   onUpdateExchangeRate: () => void;
   onApproveListing: (id: string, price: number) => void;
+  onApprove: (id: string, price: number) => void;
+  onReject: (id: string, reason: string) => void;
 }
 
 export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
@@ -26,9 +28,11 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
   tradeIns,
   districtOverview = [],
   onUpdateExchangeRate,
-  onApproveListing
+  onApproveListing,
+  onApprove,
+  onReject
 }) => {
-  const escalatedLeads = tradeIns.filter(t => t.status === 'ESCALATED_TO_GM');
+  const escalatedLeads = tradeIns.filter(t => t.status === 'ESCALATED_TO_GM' || t.status === 'MANAGER_REVIEW');
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -190,14 +194,28 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
                   </div>
                 </div>
 
-                <div className="mt-auto pt-1 md:pt-2">
+                <div className="mt-auto pt-1 md:pt-2 space-y-1.5">
                   <Button 
                     variant="primary"
                     size="sm"
-                    onClick={() => onApproveListing(vehicle.id, vehicle.price || vehicle.user_asking_price_etb || vehicle.askingPrice || 0)}
+                    onClick={() => {
+                      const price = prompt('Final Approved Offer (ETB):', (vehicle.price || vehicle.user_asking_price_etb || vehicle.askingPrice || 0).toString());
+                      if (price) onApprove(vehicle.id, Number(price));
+                    }}
                     className="w-full h-8 md:h-10 text-[11px] md:text-[13px]"
                   >
-                    Authorize
+                    Authorize Offer
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const reason = prompt('Reason for rejection:');
+                      if (reason) onReject(vehicle.id, reason);
+                    }}
+                    className="w-full h-8 md:h-10 text-[11px] md:text-[13px] border-error-main/30 text-error-main hover:bg-error-main/10"
+                  >
+                    Reject
                   </Button>
                 </div>
               </div>

@@ -345,7 +345,7 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
 
          {/* Action Bar / Footer */}
         <div className="p-4 bg-bg-secondary border-t border-border-subtle z-50 flex items-center justify-between no-print mx--6 -mx-6 mb--4 -mb-4">
-           {lead.status === 'MANAGER_REVIEW' && onApprove && onReject ? (
+           {(lead.status === 'MANAGER_REVIEW' || lead.status === 'ESCALATED_TO_GM') && onApprove && onReject ? (
              <>
                <div className="space-y-0.5 hidden md:block">
                   <p className="text-[15px] font-semibold text-text-main">Management Authorization Required</p>

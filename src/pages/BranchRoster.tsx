@@ -90,7 +90,7 @@ export default function BranchRoster() {
       fd.append('file', avatarFile);
       fd.append('bucket', 'vehicles');
       fd.append('folder', `staff-avatars/${staffId}`);
-      const res = await fetch('http://localhost:3000/storage/upload', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${session.access_token}` }, body: fd
       });
       if (!res.ok) return null;

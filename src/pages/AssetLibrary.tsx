@@ -20,10 +20,10 @@ export default function AssetLibrary() {
     const fetchAssets = async () => {
       try {
         const [vehiclesRes, budgetsRes] = await Promise.all([
-          fetch('http://localhost:3000/vehicles', {
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/vehicles`, {
             headers: { 'Authorization': `Bearer ${session.access_token}` }
           }),
-          fetch('http://localhost:3000/staff-budgets', {
+          fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/staff-budgets`, {
             headers: { 'Authorization': `Bearer ${session.access_token}` }
           })
         ]);

@@ -21,12 +21,12 @@ export default function PeopleManagement() {
     if (!session) return;
     const headers = { 'Authorization': `Bearer ${session.access_token}` };
     
-    fetch('http://localhost:3000/people', { headers })
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people`, { headers })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setPeople(data); else setPeople([]); })
       .catch(err => { console.error(err); setPeople([]); });
       
-    fetch('http://localhost:3000/locations', { headers })
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/locations`, { headers })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setBranches(data); else setBranches([]); })
       .catch(err => { console.error(err); setBranches([]); });
@@ -36,7 +36,7 @@ export default function PeopleManagement() {
     if (!session) return;
     const branch = branches.find((b: any) => b.id === form.locationId);
     try {
-      const res = await fetch('http://localhost:3000/people', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people`, {
         method: 'POST', 
         headers: { 
           'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ export default function PeopleManagement() {
         payload.locationId = form.locationId;
       }
 
-      const res = await fetch(`http://localhost:3000/people/${editingPerson.id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people/${editingPerson.id}`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ export default function PeopleManagement() {
   const toggleActive = async (id: string) => {
     if (!session) return;
     try {
-      const res = await fetch(`http://localhost:3000/people/${id}/toggle`, { 
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people/${id}/toggle`, { 
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });

@@ -194,7 +194,7 @@ export default function SupportInbox() {
           {selectedConv ? (
             <>
               {/* Chat Header */}
-              <div className="px-4 md:px-6 py-4 bg-surface-card border-b border-border-subtle/30 flex items-center justify-between shrink-0">
+              <div className="px-4 md:px-6 py-4 bg-surface-card border-b border-border-subtle/30 flex items-center justify-between shrink-0 max-md:pt-[calc(1rem+env(safe-area-inset-top))]">
                 <div className="flex items-center gap-3 md:gap-4">
                   <button className="md:hidden p-2 -ml-2 text-text-muted hover:text-text-main rounded-lg active:bg-bg-secondary" onClick={() => setSelectedConvId(null)}>
                     <ChevronLeft size={18} />

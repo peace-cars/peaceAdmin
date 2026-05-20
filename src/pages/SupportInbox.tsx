@@ -153,8 +153,10 @@ export default function SupportInbox() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
-                      <span className="font-bold text-text-main text-[12px] tracking-tight truncate pr-2">
+                      <span className="font-bold text-text-main text-[12px] tracking-tight truncate pr-2 flex items-center gap-2">
                         {conv.profiles?.full_name || 'Customer'}
+                        {conv.status === 'UNCLAIMED' && <span className="w-2 h-2 rounded-full bg-error" title="Unclaimed"></span>}
+                        {conv.status === 'RESOLVED' && <span title="Resolved"><CheckCircle size={12} className="text-green-500" /></span>}
                       </span>
                       <span className="text-[11px] text-text-muted font-medium shrink-0">
                         {getTimeAgo(conv.updated_at)}
@@ -210,7 +212,40 @@ export default function SupportInbox() {
                     </div>
                   </div>
                 </div>
-                <Badge variant="success" className="text-[11px]">Active</Badge>
+                
+                <div className="flex items-center gap-2">
+                  {selectedConv.status === 'UNCLAIMED' && (
+                     <button 
+                       onClick={async () => {
+                         await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/${selectedConv.id}/claim`, {
+                           method: 'PATCH',
+                           headers: { 'Authorization': `Bearer ${session?.access_token}` }
+                         });
+                         fetchConversations();
+                       }}
+                       className="px-3 py-1.5 bg-primary-main text-bg text-[11px] font-bold rounded-lg shadow-sm hover:bg-primary-main/90 transition-all flex items-center gap-1"
+                     >
+                       Claim <ChevronRight size={14} />
+                     </button>
+                  )}
+                  {selectedConv.status === 'CLAIMED' && selectedConv.assigned_staff_id === session?.user?.id && (
+                     <button 
+                       onClick={async () => {
+                         await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/${selectedConv.id}/resolve`, {
+                           method: 'PATCH',
+                           headers: { 'Authorization': `Bearer ${session?.access_token}` }
+                         });
+                         fetchConversations();
+                       }}
+                       className="px-3 py-1.5 bg-green-500/10 text-green-500 border border-green-500/20 text-[11px] font-bold rounded-lg shadow-sm hover:bg-green-500/20 transition-all flex items-center gap-1"
+                     >
+                       <CheckCircle size={14} /> Resolve
+                     </button>
+                  )}
+                  <Badge variant={selectedConv.status === 'RESOLVED' ? 'success' : selectedConv.status === 'CLAIMED' ? 'warning' : 'error'} className="text-[11px]">
+                    {selectedConv.status || 'ACTIVE'}
+                  </Badge>
+                </div>
               </div>
 
               {/* Messages */}

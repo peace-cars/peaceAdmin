@@ -259,6 +259,7 @@ export default function Dashboard() {
               onApproveListing={approveListing}
               onApprove={handleApproveLead}
               onReject={handleRejectLead}
+              onViewReport={(lead) => setSelectedReport(lead)}
             />
             <div className="my-10" />
           </>

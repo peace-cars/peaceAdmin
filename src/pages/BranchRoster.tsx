@@ -87,12 +87,26 @@ export default function BranchRoster() {
   const uploadAvatar = async (staffId: string): Promise<string | null> => {
     if (!avatarFile || !session) return null;
     try {
-      const fd = new FormData();
-      fd.append('file', avatarFile);
-      fd.append('bucket', 'vehicles');
-      fd.append('folder', `staff-avatars/${staffId}`);
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${session.access_token}` }, body: fd
+      const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(f);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+      const base64Data = await toBase64(avatarFile);
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload-base64`, {
+        method: 'POST', 
+        headers: { 
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }, 
+        body: JSON.stringify({
+          base64: base64Data,
+          filename: avatarFile.name,
+          bucket: 'vehicles',
+          folder: `staff-avatars/${staffId}`
+        })
       });
       if (!res.ok) return null;
       const { url } = await res.json();

@@ -31,9 +31,15 @@ export async function initializePushNotifications(userId: string) {
     PushNotifications.addListener('registration', async (token) => {
       console.log('[Push] Native device registered with token:', token.value);
       try {
+        const platform = typeof Capacitor.getPlatform === 'function' ? Capacitor.getPlatform() : 'web';
+        const deviceInfo = {
+          platform,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+          appVersion: platform,
+        };
         await api.post('/notifications/register-fcm', {
-          userId,
-          token: token.value
+          token: token.value,
+          device: deviceInfo
         });
         console.log('[Push] Registered token successfully with backend');
       } catch (err) {

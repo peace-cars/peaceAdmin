@@ -23,6 +23,7 @@ interface GeneralManagerViewProps {
   onApproveListing: (id: string, price: number) => void;
   onApprove: (id: string, price: number) => void;
   onReject: (id: string, reason: string) => void;
+  onViewReport: (lead: any) => void;
 }
 
 export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
@@ -39,7 +40,8 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
   onUpdateExchangeRate,
   onApproveListing,
   onApprove,
-  onReject
+  onReject,
+  onViewReport
 }) => {
   const escalatedLeads = tradeIns.filter(t => t.status === 'ESCALATED_TO_GM' || t.status === 'MANAGER_REVIEW');
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
@@ -242,16 +244,24 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
               <div className="h-1 w-full bg-warning shrink-0" />
               
               {/* Thumbnail */}
-              <div className="h-28 md:h-40 w-full relative overflow-hidden bg-bg-secondary shrink-0">
+              <div 
+                className="h-28 md:h-40 w-full relative overflow-hidden bg-bg-secondary shrink-0 cursor-pointer group"
+                onClick={() => onViewReport(vehicle)}
+              >
                 {vehicle.photos && vehicle.photos.length > 0 ? (
-                  <img src={vehicle.photos[0]} alt={vehicle.vehicle} className="w-full h-full object-cover" />
+                  <img src={vehicle.photos[0]} alt={vehicle.vehicle} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
                     <CarFront size={28} className="text-text-muted opacity-20" />
                   </div>
                 )}
                 <div className="absolute top-2 right-2 md:top-3 md:right-3">
-                  <Badge variant="warning" className="text-[9px] md:text-[11px] px-1.5 md:px-2 py-0.5">Escalated</Badge>
+                  <Badge variant="warning" className="text-[9px] md:text-[11px] px-1.5 md:px-2 py-0.5 shadow-md">Escalated</Badge>
+                </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg backdrop-blur-sm transition-all shadow-xl">
+                    View Details
+                  </span>
                 </div>
               </div>
 
@@ -354,7 +364,7 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
                   onAssignTask={() => {}}
                   onApprove={(id, price) => onApprove(id, price)}
                   onReject={(id, reason) => onReject(id, reason)}
-                  onViewReport={() => {}}
+                  onViewReport={(lead) => onViewReport(lead)}
                   onEscalate={() => {}}
                 />
               </div>

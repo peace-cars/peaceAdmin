@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { SideNav } from './SideNav';
 import { TopNav } from './TopNav';
 import { BottomNav } from './BottomNav';
@@ -29,6 +31,17 @@ export const AppShell: React.FC<AppShellProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const contentRef = useRef<HTMLElement>(null);
+
+  const showBackButton = location.pathname !== '/' && location.pathname !== '/login' && location.pathname !== '/signup';
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, left: 0 });
+    contentRef.current?.focus();
+    window.scrollTo({ top: 0, left: 0 });
+  }, [location.pathname]);
 
   const handleToggleSidebar = () => {
     if (window.innerWidth < 1024) {
@@ -81,8 +94,24 @@ export const AppShell: React.FC<AppShellProps> = ({
           onToggleSidebar={handleToggleSidebar}
         />
 
+        {showBackButton && (
+          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-[95] border-b border-border-subtle/30 bg-surface-card/90 backdrop-blur-xl shadow-sm">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 bg-bg-secondary/80 border border-border-subtle/60 text-text-main font-semibold hover:bg-bg-secondary transition-all"
+              >
+                <ArrowLeft size={16} />
+                Back
+              </button>
+              <span className="text-sm text-text-muted">Return to the previous page</span>
+            </div>
+          </div>
+        )}
+
         {/* Scrollable Content */}
-        <section className="flex-grow overflow-y-auto no-scrollbar scroll-smooth" onClick={() => setIsMobileMenuOpen(false)}>
+        <section ref={contentRef} tabIndex={-1} className="flex-grow overflow-y-auto no-scrollbar scroll-smooth" onClick={() => setIsMobileMenuOpen(false)}>
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

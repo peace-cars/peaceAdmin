@@ -120,15 +120,27 @@ export const DetailedInspectionModal: React.FC<DetailedInspectionModalProps> = (
     if (!session) return;
     setUploadingPointId(pointId);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('bucket', 'vehicles');
-      formData.append('folder', `inspections/${task.trade_in_id}`);
+      // Convert file to Base64
+      const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(f);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+      const base64Data = await toBase64(file);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload-base64`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-        body: formData
+        headers: { 
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          base64: base64Data,
+          filename: file.name,
+          bucket: 'vehicles',
+          folder: `inspections/${task.trade_in_id}`
+        })
       });
 
       if (!response.ok) throw new Error('Upload failed');

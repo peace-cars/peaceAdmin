@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
-import Dashboard from './pages/Dashboard';
-import Acquisitions from './pages/Acquisitions';
-import InspectionReports from './pages/InspectionReports';
-import InventoryManager from './pages/InventoryManager';
-import BranchRoster from './pages/BranchRoster';
-import BranchManagement from './pages/BranchManagement';
-import PeopleManagement from './pages/PeopleManagement';
-import CommissionApproval from './pages/CommissionApproval';
-import BudgetManager from './pages/BudgetManager';
-import StaffReports from './pages/StaffReports';
-import AssetLibrary from './pages/AssetLibrary';
-import SupportInbox from './pages/SupportInbox';
-import Login from './pages/Login';
-import SoldArchive from './pages/SoldArchive';
-import Notifications from './pages/Notifications';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Acquisitions = lazy(() => import('./pages/Acquisitions'));
+const InspectionReports = lazy(() => import('./pages/InspectionReports'));
+const InventoryManager = lazy(() => import('./pages/InventoryManager'));
+const BranchRoster = lazy(() => import('./pages/BranchRoster'));
+const BranchManagement = lazy(() => import('./pages/BranchManagement'));
+const PeopleManagement = lazy(() => import('./pages/PeopleManagement'));
+const CommissionApproval = lazy(() => import('./pages/CommissionApproval'));
+const BudgetManager = lazy(() => import('./pages/BudgetManager'));
+const StaffReports = lazy(() => import('./pages/StaffReports'));
+const AssetLibrary = lazy(() => import('./pages/AssetLibrary'));
+const SupportInbox = lazy(() => import('./pages/SupportInbox'));
+const Login = lazy(() => import('./pages/Login'));
+const SoldArchive = lazy(() => import('./pages/SoldArchive'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const FinanceManager = lazy(() => import('./pages/FinanceManager'));
 import { AppShell } from './components/ui/AppShell';
 import { API_URL } from './lib/api';
 import { initializePushNotifications } from './lib/push';
@@ -114,6 +115,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 import Splash from './components/ui/Splash';
+import { CapacitorBackButtonHandler } from './components/ui/CapacitorBackButtonHandler';
 
 function App() {
   const { session } = useAuth();
@@ -126,23 +128,27 @@ function App() {
 
   return (
     <Router>
-      <Routes>
-        <Route path="/login" element={(session && role) ? <Navigate to="/" replace /> : <Login />} />
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/acquisitions" element={<ProtectedRoute><Acquisitions /></ProtectedRoute>} />
-        <Route path="/inspections" element={<ProtectedRoute><InspectionReports /></ProtectedRoute>} />
-        <Route path="/inbox" element={<ProtectedRoute><SupportInbox /></ProtectedRoute>} />
-        <Route path="/inventory" element={<ProtectedRoute><InventoryManager /></ProtectedRoute>} />
-        <Route path="/staff" element={<ProtectedRoute><BranchRoster /></ProtectedRoute>} />
-        <Route path="/branches" element={<ProtectedRoute><BranchManagement /></ProtectedRoute>} />
-        <Route path="/people" element={<ProtectedRoute><PeopleManagement /></ProtectedRoute>} />
-        <Route path="/commissions" element={<ProtectedRoute><CommissionApproval /></ProtectedRoute>} />
-        <Route path="/budgets" element={<ProtectedRoute><BudgetManager /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><StaffReports /></ProtectedRoute>} />
-        <Route path="/library" element={<ProtectedRoute><AssetLibrary /></ProtectedRoute>} />
-        <Route path="/archive" element={<ProtectedRoute><SoldArchive /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-      </Routes>
+      <CapacitorBackButtonHandler />
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-bg-base text-text-muted">Loading page…</div>}>
+        <Routes>
+          <Route path="/login" element={(session && role) ? <Navigate to="/" replace /> : <Login />} />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/acquisitions" element={<ProtectedRoute><Acquisitions /></ProtectedRoute>} />
+          <Route path="/inspections" element={<ProtectedRoute><InspectionReports /></ProtectedRoute>} />
+          <Route path="/inbox" element={<ProtectedRoute><SupportInbox /></ProtectedRoute>} />
+          <Route path="/inventory" element={<ProtectedRoute><InventoryManager /></ProtectedRoute>} />
+          <Route path="/staff" element={<ProtectedRoute><BranchRoster /></ProtectedRoute>} />
+          <Route path="/branches" element={<ProtectedRoute><BranchManagement /></ProtectedRoute>} />
+          <Route path="/people" element={<ProtectedRoute><PeopleManagement /></ProtectedRoute>} />
+          <Route path="/commissions" element={<ProtectedRoute><CommissionApproval /></ProtectedRoute>} />
+          <Route path="/budgets" element={<ProtectedRoute><BudgetManager /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><StaffReports /></ProtectedRoute>} />
+          <Route path="/finance" element={<ProtectedRoute><FinanceManager /></ProtectedRoute>} />
+          <Route path="/library" element={<ProtectedRoute><AssetLibrary /></ProtectedRoute>} />
+          <Route path="/archive" element={<ProtectedRoute><SoldArchive /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }

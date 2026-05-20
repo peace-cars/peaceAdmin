@@ -117,8 +117,9 @@ export const SideNav: React.FC<SideNavProps> = ({ role, onLogout, isCollapsed = 
         <NavItem to="/notifications" icon={Bell} label="Registry Pulse" />
 
         {!isCollapsed && <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted px-3 pt-5 pb-2">Finance</p>}
-        <NavItem to="/budgets" icon={Calculator} label="Finance Requests" hidden={!(role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR')} />
-        <NavItem to="/commissions" icon={DollarSign} label="Commissions" />
+        <NavItem to="/finance" icon={Calculator} label="Auto Loans" hidden={!(role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR')} />
+        <NavItem to="/budgets" icon={DollarSign} label="Budgets" hidden={!(role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR')} />
+        <NavItem to="/commissions" icon={TrendingUp} label="Commissions" />
         <NavItem to="/inspections" icon={FileSearch} label="Inspections" />
         <NavItem to="/archive" icon={HardDrive} label="Sold Archive" hidden={!(role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR')} />
 

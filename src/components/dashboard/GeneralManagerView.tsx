@@ -61,15 +61,21 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
     ])
       .then(([leads, budgets]) => {
         const allLeads = Array.isArray(leads) ? leads : [];
-        // Filter by branch if API doesn't support locationId query param
+        // Filter by branch strictly matching selectedBranch.id (using both branch/location fields)
         const filtered = allLeads.filter((t: any) =>
-          !t.location_id ||
+          t.branch_id === selectedBranch.id ||
+          t.branchId === selectedBranch.id ||
           t.location_id === selectedBranch.id ||
           t.locationId === selectedBranch.id
         );
-        setBranchLeads(filtered.length > 0 ? filtered : allLeads);
+        setBranchLeads(filtered);
         const bBudgets = Array.isArray(budgets) ? budgets : [];
-        setBranchBudgets(bBudgets.filter((b: any) => b.location_id === selectedBranch.id || b.locationId === selectedBranch.id));
+        setBranchBudgets(bBudgets.filter((b: any) =>
+          b.branch_id === selectedBranch.id ||
+          b.branchId === selectedBranch.id ||
+          b.location_id === selectedBranch.id ||
+          b.locationId === selectedBranch.id
+        ));
       })
       .finally(() => setLoadingBranchLeads(false));
   }, [selectedBranch?.id]);
@@ -357,7 +363,12 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
                   tradeIns={branchLeads}
                   showroomCount={0}
                   budgets={branchBudgets}
-                  branchStaff={branchStaff.filter(s => s.locationId === selectedBranch.id || s.location_id === selectedBranch.id)}
+                  branchStaff={branchStaff.filter(s =>
+                    s.locationId === selectedBranch.id ||
+                    s.location_id === selectedBranch.id ||
+                    s.branchId === selectedBranch.id ||
+                    s.branch_id === selectedBranch.id
+                  )}
                   dmBranches={[selectedBranch]}
                   role="GENERAL_MANAGER"
                   activeQueueTab="Authorization Pending"

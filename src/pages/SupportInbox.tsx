@@ -98,14 +98,17 @@ export default function SupportInbox() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col gap-6">
-      <PageHeader 
-        title="Support Inbox" 
-        subtitle="Manage customer conversations and vehicle inquiries."
-        icon={<Inbox size={18} className="text-primary-main" />}
-        actions={
-          <Badge variant="primary" className="text-[12px] h-7 px-3">{conversations.length} Active Chats</Badge>
-        }
-      />
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm shrink-0">
+        <PageHeader 
+          title="Support Inbox" 
+          subtitle="Manage customer conversations and vehicle inquiries."
+          icon={<Inbox size={18} className="text-primary-main" />}
+          actions={
+            <Badge variant="primary" className="text-[12px] h-7 px-3">{conversations.length} Active Chats</Badge>
+          }
+          className="pb-0"
+        />
+      </div>
 
       <div className="flex-1 bg-surface-card border border-border-subtle/30 rounded-2xl overflow-hidden flex shadow-sm min-h-0 relative">
         {/* Conversation List */}
@@ -146,7 +149,7 @@ export default function SupportInbox() {
                 >
                    <div className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold border",
-                    selectedConvId === conv.id ? "bg-primary-main text-bg border-primary-main" : "bg-bg-secondary text-text-muted/60 border-border-subtle/30"
+                    selectedConvId === conv.id ? "bg-primary-main text-white border-primary-main" : "bg-bg-secondary text-text-muted/60 border-border-subtle/30"
                   )}>
                     {conv.profiles?.full_name?.charAt(0) || <User size={16} />}
                   </div>
@@ -183,7 +186,11 @@ export default function SupportInbox() {
         </div>
 
         {/* Chat Area */}
-        <div className={cn("flex-1 flex flex-col bg-bg-secondary/20 h-full", !selectedConvId ? "hidden md:flex" : "flex")}>
+        <div className={cn("flex-grow flex flex-col bg-bg-secondary/20 h-full", 
+          !selectedConvId 
+            ? "hidden md:flex" 
+            : "flex max-md:fixed max-md:inset-0 max-md:z-[150] max-md:bg-bg-base"
+        )}>
           {selectedConv ? (
             <>
               {/* Chat Header */}
@@ -223,7 +230,7 @@ export default function SupportInbox() {
                          });
                          fetchConversations();
                        }}
-                       className="px-3 py-1.5 bg-primary-main text-bg text-[11px] font-bold rounded-lg shadow-sm hover:bg-primary-main/90 transition-all flex items-center gap-1"
+                       className="px-3 py-1.5 bg-primary-main text-white text-[11px] font-bold rounded-lg shadow-sm hover:bg-primary-main/90 transition-all flex items-center gap-1"
                      >
                        Claim <ChevronRight size={14} />
                      </button>
@@ -278,7 +285,7 @@ export default function SupportInbox() {
                            <div className={cn(
                             "px-4 py-3 text-[12px] font-medium shadow-sm leading-relaxed",
                             isStaff 
-                              ? 'bg-primary-main text-bg rounded-2xl rounded-tr-md' 
+                              ? 'bg-primary-main text-white rounded-2xl rounded-tr-md' 
                               : 'bg-surface-card border border-border-subtle/30 text-text-main rounded-2xl rounded-tl-md'
                           )}>
                             {msg.text}
@@ -293,7 +300,7 @@ export default function SupportInbox() {
                 )}
                 <div ref={scrollRef} />
               </div>
-
+ 
               {/* Input */}
               <div className="p-4 bg-surface-card border-t border-border-subtle/30 shrink-0">
                 <form onSubmit={handleSendMessage} className="flex gap-3">
@@ -307,7 +314,7 @@ export default function SupportInbox() {
                    <button 
                     type="submit"
                     disabled={!inputText.trim()}
-                    className="bg-primary-main text-bg px-6 py-3 rounded-xl hover:bg-primary-main/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed font-bold flex items-center gap-2 text-[11px] active:scale-95 shadow-md shadow-primary-main/20"
+                    className="bg-primary-main text-white px-6 py-3 rounded-xl hover:bg-primary-main/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed font-bold flex items-center gap-2 text-[11px] active:scale-95 shadow-md shadow-primary-main/20"
                   >
                     Send <Send size={14} />
                   </button>

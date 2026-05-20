@@ -173,7 +173,7 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
                        { label: 'Contact Phone', value: lead.phone || lead.contactPhone || 'No phone', icon: <Phone size={16}/> },
                        { label: 'License Plate', value: lead.plate || details.plate_code || 'Not Recorded', icon: <ClipboardCheck size={16}/> },
                        { label: 'Location', value: lead.location || 'Central Branch', icon: <MapPin size={16}/> },
-                       { label: 'Duty Status', value: details.duty_status?.replace('_', ' ') || 'Unknown', icon: <FileText size={16}/> },
+                       { label: 'Tax Status', value: details.duty_status === 'DUTY_PAID' ? 'Tax Paid' : details.duty_status === 'DUTY_FREE' ? 'Tax Exempt' : details.duty_status?.replace('_', ' ') || 'Unknown', icon: <FileText size={16}/> },
                        { label: 'Libre Status', value: details.libre_status?.replace('_', ' ') || 'Unknown', icon: <FileText size={16}/> }
                      ].map(item => (
                        <div key={item.label}>

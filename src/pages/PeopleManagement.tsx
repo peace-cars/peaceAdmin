@@ -144,17 +144,19 @@ export default function PeopleManagement() {
 
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader 
-        title="Personnel Registry" 
-        subtitle="Operational oversight of administrative and showroom personnel."
-        icon={<Users size={18} className="text-primary-main" />}
-        actions={
-          <Button variant="primary" size="sm" onClick={() => { setEditingPerson(null); setShowCreate(true); setForm({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: '1.0' }); }} className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all w-full md:w-auto">
-            New Onboarding
-          </Button>
-        }
-        className="pb-8 border-b border-border-subtle/30"
-      />
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm">
+        <PageHeader 
+          title="Personnel Registry" 
+          subtitle="Operational oversight of administrative and showroom personnel."
+          icon={<Users size={18} className="text-primary-main" />}
+          actions={
+            <Button variant="primary" size="sm" onClick={() => { setEditingPerson(null); setShowCreate(true); setForm({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: '1.0' }); }} className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all w-full md:w-auto">
+              New Onboarding
+            </Button>
+          }
+          className="pb-0"
+        />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiTile label="Total Workforce" value={people.length} icon={<Users size={14} />} className="rounded-xl p-4 h-28" />

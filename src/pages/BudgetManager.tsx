@@ -72,17 +72,19 @@ export default function BudgetManager() {
 
   return (
     <div className="space-y-8 pb-12">
-      <PageHeader 
-        title="Finance Requests" 
-        subtitle="Review and approve operational budget requests from branch staff."
-        icon={<Calculator size={24} />}
-        actions={
-          <div className="flex items-center gap-3">
-             <Button variant="outline" size="sm" onClick={() => fetchBudgets()} className="rounded-xl h-10 px-6 font-bold text-[11px] uppercase tracking-wider border-border-subtle">Refresh Data</Button>
-             <Button variant="primary" size="sm" className="rounded-xl h-10 px-6 font-bold text-[11px] uppercase tracking-wider">Export Report</Button>
-          </div>
-        }
-      />
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm">
+        <PageHeader 
+          title="Finance Requests" 
+          subtitle="Review and approve operational budget requests from branch staff."
+          icon={<Calculator size={24} />}
+          actions={
+            <div className="flex items-center gap-3">
+               <Button variant="outline" size="sm" onClick={() => fetchBudgets()} className="rounded-xl h-10 px-6 font-bold text-[11px] uppercase tracking-wider border-border-subtle">Refresh Data</Button>
+               <Button variant="primary" size="sm" className="rounded-xl h-10 px-6 font-bold text-[11px] uppercase tracking-wider">Export Report</Button>
+            </div>
+          }
+        />
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiTile label="Pending Review" value={`${(pendingReviewTotal / 1000).toFixed(1)}K`} icon={<Clock size={14} />} color="amber" className="p-6 h-32" />

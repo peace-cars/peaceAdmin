@@ -193,7 +193,7 @@ const Acquisitions = () => {
 
   return (
     <div className="animate-fade-in relative">
-      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 px-4 md:px-8 py-3 md:py-4 bg-bg border-b border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 md:mb-6">
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-3 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/50 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-6 shadow-sm">
          <div className="flex bg-bg-secondary p-1 rounded-xl overflow-x-auto no-scrollbar w-full md:w-auto">
             {columns.map(col => (
               <button 
@@ -242,9 +242,9 @@ const Acquisitions = () => {
                      </Badge>
                   </div>
                   <Tooltip content="Stage Options">
-                    <button className="text-text-muted hover:text-text-main transition-all p-2 hover:bg-bg-secondary rounded-xl">
+                     <button className="text-text-muted hover:text-text-main transition-all p-2 hover:bg-bg-secondary rounded-xl">
                        <MoreHorizontal size={16} />
-                    </button>
+                     </button>
                   </Tooltip>
                </div>
                <p className="text-[13px] text-text-muted">
@@ -264,89 +264,60 @@ const Acquisitions = () => {
                  <div 
                   key={item.id} 
                   onClick={() => setSelectedLead(item)}
-                  className="bg-surface-card rounded-2xl border border-border-subtle flex flex-col cursor-pointer hover:border-primary-main/30 transition-all overflow-hidden group shadow-sm"
+                  className="bg-surface-card rounded-xl border border-border-subtle flex cursor-pointer hover:border-primary-main/30 hover:shadow-md transition-all p-2.5 gap-3 items-center group relative overflow-hidden shadow-sm"
                  >
-                    {/* Marketplace Style Image Container */}
-                    <div className="relative aspect-video bg-bg-base overflow-hidden border-b border-border-subtle/30">
+                    {/* Thumbnail Image Container */}
+                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-border-subtle/50 bg-bg-base shrink-0 relative shadow-inner">
                       {item.photos && item.photos.length > 0 ? (
                         <img 
                           src={item.photos[0]} 
                           alt={item.vehicle} 
-                          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Car size={48} className="text-text-muted opacity-10" />
+                          <Car size={20} className="text-text-muted opacity-20" />
                         </div>
                       )}
                       
-                      {/* Status Badge */}
-                      <div className="absolute top-3 left-3">
-                        <Badge variant={item.status === 'ACQUIRED' ? 'success' : item.status === 'NEW_LEAD' ? 'info' : 'warning'}>
-                          {item.status.replace(/_/g, ' ')}
-                        </Badge>
-                      </div>
-
-                      {/* Photo Count - Bottom Right */}
+                      {/* Photo Count overlay */}
                       {item.photos && item.photos.length > 1 && (
-                        <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/50 text-white px-2 py-1 rounded-lg text-[11px] font-medium">
-                          <Camera size={12} /> {item.photos.length}
+                        <div className="absolute bottom-0.5 right-0.5 bg-black/60 text-white px-1 py-0.2 rounded text-[8px] font-bold">
+                          {item.photos.length}P
                         </div>
                       )}
                     </div>
 
-                    {/* Marketplace Info Section */}
-                      <div className="p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                           <div className="flex-1 min-w-0">
-                              <p className="text-[13px] font-bold text-text-main truncate group-hover:text-primary-main transition-colors">{item.vehicle}</p>
-                              <div className="flex items-center gap-1 text-[11px] text-text-secondary mt-0.5">
-                                 <User size={10} className="text-text-dim" />
-                                 <span className="truncate">{item.customer}</span>
-                              </div>
-                           </div>
-                           <div className="text-right shrink-0">
-                              <p className="text-[13px] font-bold text-text-main leading-tight">
-                                {(item.askingPrice || 0).toLocaleString()} 
-                              </p>
-                              <p className="text-[10px] text-primary-main font-bold">ETB</p>
-                           </div>
+                    {/* Info Section */}
+                    <div className="flex-grow min-w-0 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-bold text-text-main truncate group-hover:text-primary-main transition-colors leading-tight">{item.vehicle}</p>
+                          <p className="text-[10px] text-text-muted truncate mt-0.5 flex items-center gap-1">
+                            <User size={10} className="text-text-dim shrink-0" />
+                            <span>{item.customer}</span>
+                          </p>
                         </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[12px] font-black text-text-main leading-none">
+                            {(item.askingPrice || 0).toLocaleString()}
+                          </p>
+                          <p className="text-[8px] text-primary-main font-black uppercase mt-0.5">ETB</p>
+                        </div>
+                      </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-border-subtle/50">
-                           <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1 text-text-dim text-[10px]">
-                                 <Clock size={10} /> {item.time}
-                              </div>
-                              <div className="flex items-center gap-1 text-text-dim text-[10px]">
-                                 <MapPin size={10} /> <span className="truncate max-w-[60px]">{item.location || 'Central'}</span>
-                              </div>
-                           </div>
-                           <div className="flex items-center gap-1">
-                              <div className={cn("w-1.5 h-1.5 rounded-full", getStatusColor(item.status).replace('bg-', 'bg-'))} />
-                              <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">{item.status.split('_')[0]}</span>
-                           </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-border-subtle/30">
+                        <div className="flex items-center gap-2 text-[9px] text-text-dim font-medium">
+                          <span className="flex items-center gap-0.5"><Clock size={9} /> {item.time}</span>
+                          <span>•</span>
+                          <span className="flex items-center gap-0.5"><MapPin size={9} /> {item.location || 'Central'}</span>
                         </div>
-
-                        <div className="pt-1">
-                           {item.status === 'NEW_LEAD' ? (
-                             <div className="relative" onClick={e => e.stopPropagation()}>
-                               <select 
-                                 className="w-full bg-bg-secondary border border-border-subtle text-[12px] h-9 px-3 rounded-lg text-text-main outline-none focus:border-primary-main appearance-none cursor-pointer"
-                                 onChange={(e) => assignStaff(item.id, e.target.value)}
-                                 defaultValue=""
-                               >
-                                 <option value="" disabled>Assign Staff...</option>
-                                 {branchStaff.map(s => <option key={s.id} value={s.id}>{s.fullName || s.full_name}</option>)}
-                               </select>
-                             </div>
-                           ) : (
-                             <button className="w-full py-2 bg-bg-secondary hover:bg-surface-hover text-text-secondary rounded-lg text-[11px] font-bold uppercase transition-all">
-                                View Dossier
-                             </button>
-                           )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className={cn("w-1.5 h-1.5 rounded-full", getStatusColor(item.status).replace('bg-', 'bg-'))} />
+                          <span className="text-[8px] font-black text-text-muted uppercase tracking-wider">{item.status.replace(/_/g, ' ').split(' ')[0]}</span>
                         </div>
-                     </div>
+                      </div>
+                    </div>
                  </div>
                ))}
 

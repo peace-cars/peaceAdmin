@@ -162,7 +162,7 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
                 <p className="text-[13px] font-bold text-text-muted font-medium">Legal Status</p>
                  <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                     <Badge variant={selectedLead.vehicleDetails.duty_status === 'DUTY_PAID' ? 'primary' : 'default'} className="px-2 py-0.5 text-[12px]">{selectedLead.vehicleDetails.duty_status?.replace('_', ' ')}</Badge>
+                     <Badge variant={selectedLead.vehicleDetails.duty_status === 'DUTY_PAID' ? 'primary' : 'default'} className="px-2 py-0.5 text-[12px]">{selectedLead.vehicleDetails.duty_status === 'DUTY_PAID' ? 'Tax Paid' : selectedLead.vehicleDetails.duty_status === 'DUTY_FREE' ? 'Tax Exempt' : selectedLead.vehicleDetails.duty_status?.replace('_', ' ')}</Badge>
                      <Badge variant="default" className="px-2 py-0.5 text-[12px] bg-warning/10 text-warning border border-warning/20">{selectedLead.vehicleDetails.libre_status?.replace('_', ' ')} Libre</Badge>
                   </div>
                   <p className="text-xs text-text-secondary">Accidents: {selectedLead.vehicleDetails.accident_history?.replace('_', ' ')}</p>

@@ -2,6 +2,7 @@
 
 :root {
   /* iOS-inspired palette */
+  --color-bg: #FFFFFF;
   --color-bg-base: #F2F2F7;
   --color-bg-sidebar: #FFFFFF;
   --color-surface-card: #FFFFFF;
@@ -31,6 +32,7 @@
 
 .dark {
   /* Dark palette */
+  --color-bg: #000000;
   --color-bg-base: #000000;
   --color-bg-sidebar: #1C1C1E;
   --color-surface-card: #1C1C1E;
@@ -59,6 +61,7 @@
 }
 
 @theme {
+  --color-bg: var(--color-bg);
   --color-bg-base: var(--color-bg-base);
   --color-bg-sidebar: var(--color-bg-sidebar);
   --color-surface-card: var(--color-surface-card);

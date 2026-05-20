@@ -26,6 +26,7 @@ const InventoryManager = () => {
   const [inventory, setInventory] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState<any>({
     make: '', model: '', year: new Date().getFullYear(),
     retailPrice: '', fuelType: 'ELECTRIC', dutyStatus: 'DUTY_PAID', plate: '', vin: '',
@@ -33,6 +34,11 @@ const InventoryManager = () => {
     specifications: { batteryKwh: '', range: '', motorPower: '', driveTrain: 'RWD', interiorColor: 'Black', features: [] },
     gallery: [], internalDocuments: [],
     unitCost: '', floorPlanLoan: false, maturityDate: '', soldDate: ''
+  });
+
+  const filteredInventory = inventory.filter(car => {
+    const searchStr = `${car.make} ${car.model} ${car.year} ${car.plate} ${car.status}`.toLowerCase();
+    return searchStr.includes(searchQuery.toLowerCase());
   });
 
   const fetchBranches = async () => {
@@ -177,27 +183,31 @@ const InventoryManager = () => {
 
   return (
     <div className="space-y-10 pb-20 animate-fade-in">
-      <PageHeader 
-        title="Asset Registry" 
-        subtitle="Consolidated management of regional vehicle inventory and technical archives."
-        icon={<LayoutGrid size={18} className="text-primary-main" />}
-        actions={
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-6 w-full min-w-0">
-             <div className="relative group flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/30 group-focus-within:text-primary-main transition-colors" size={16} />
-                <input 
-                  type="text" 
-                  placeholder="Search assets..." 
-                  className="bg-bg-secondary border border-border-subtle/30 rounded-2xl py-3.5 pl-12 pr-6 text-[13px] font-bold text-text-main focus:outline-none focus:border-primary-main/30 focus:ring-4 focus:ring-primary-main/5 transition-all w-full shadow-sm placeholder:text-text-muted/30" 
-                />
-             </div>
-             <Button variant="primary" className="h-12 px-8 shadow-lg shadow-primary-main/20 shrink-0 w-full sm:w-auto" onClick={() => { setEditingId(null); resetForm(); setIsAdding(true); }}>
-                <Plus size={16} className="mr-2" /> Register Asset
-             </Button>
-          </div>
-        }
-        className="pb-8 border-b border-border-subtle/30"
-      />
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm">
+        <PageHeader 
+          title="Asset Registry" 
+          subtitle="Consolidated management of regional vehicle inventory and technical archives."
+          icon={<LayoutGrid size={18} className="text-primary-main" />}
+          actions={
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-6 w-full min-w-0">
+               <div className="relative group flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/30 group-focus-within:text-primary-main transition-colors" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Search assets..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-bg-secondary border border-border-subtle/30 rounded-2xl py-3.5 pl-12 pr-6 text-[13px] font-bold text-text-main focus:outline-none focus:border-primary-main/30 focus:ring-4 focus:ring-primary-main/5 transition-all w-full shadow-sm placeholder:text-text-muted/30" 
+                  />
+               </div>
+               <Button variant="primary" className="h-12 px-8 shadow-lg shadow-primary-main/20 shrink-0 w-full sm:w-auto" onClick={() => { setEditingId(null); resetForm(); setIsAdding(true); }}>
+                  <Plus size={16} className="mr-2" /> Register Asset
+               </Button>
+            </div>
+          }
+          className="pb-0"
+        />
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <Tooltip content="Total number of vehicles in active registry">
@@ -232,7 +242,7 @@ const InventoryManager = () => {
                 </tr>
               </thead>
               <tbody className="space-y-4">
-                 {inventory.map(car => (
+                 {filteredInventory.map(car => (
                     <tr key={car.id} className="group transition-all">
                        <td className="py-4 px-4 bg-bg-secondary/30 border-y border-l border-border-subtle/30 rounded-l-2xl group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
                           <div className="flex items-center gap-5">
@@ -252,9 +262,9 @@ const InventoryManager = () => {
                           <div className="space-y-1.5">
                              <p className="text-text-main font-bold text-sm tracking-tight leading-none">{car.priceFormatted}</p>
                              <div className="flex flex-wrap gap-2">
-                               <Tooltip content="Tax & Import Status">
-                                  <Badge variant={car.duty === 'DUTY PAID' ? 'primary' : 'warning'} className="cursor-help">{car.duty}</Badge>
-                               </Tooltip>
+                                <Tooltip content="Tax & Import Status">
+                                   <Badge variant={car.duty === 'DUTY PAID' ? 'primary' : 'warning'} className="cursor-help">{car.duty === 'DUTY PAID' ? 'Tax Paid' : car.duty === 'DUTY FREE' ? 'Tax Exempt' : car.duty}</Badge>
+                                </Tooltip>
                                {car.status === 'SHOWROOM' && Math.floor((new Date().getTime() - new Date(car.createdAt).getTime()) / (1000 * 3600 * 24)) > 30 && (
                                  <Tooltip content="Aged Inventory Alert">
                                     <Badge variant="error" className="cursor-help bg-error-main/10 text-error-main border border-error-main/20">Aged Stock</Badge>
@@ -345,67 +355,80 @@ const InventoryManager = () => {
             </table>
          </div>
 
-          {/* MOBILE VIEW - Compact Data Cards */}
-         <div className="md:hidden grid grid-cols-2 gap-2 p-2">
-            {inventory.map(car => (
-               <div key={car.id} className="bg-surface-card rounded-2xl shadow-sm border border-border-subtle/30 transition-all duration-300 hover:shadow-md active:scale-[0.98] p-2.5 relative overflow-hidden group flex flex-col">
-                  {/* Thumbnail */}
-                  <div className="aspect-video rounded-xl overflow-hidden border border-border-subtle/30 bg-bg-secondary relative shadow-inner mb-2.5 shrink-0">
-                    <img src={car.image} alt={car.model} className="w-full h-full object-cover" loading="lazy" />
-                    {car.floorPlanLoan && <div className="absolute inset-0 border-2 border-warning rounded-xl" />}
-                    <div className="absolute bottom-1 right-1 bg-black/80 rounded-md px-1 py-0.5 text-[8px] font-bold text-white tracking-widest uppercase">
-                       #{car.id.substring(0,4)}
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col justify-between">
-                     <div>
-                       <h3 className="text-[11px] font-black text-text-main leading-tight tracking-tight truncate">{car.year} {car.make}</h3>
-                       <p className="text-[10px] font-bold text-text-dim truncate">{car.model}</p>
+          {/* MOBILE VIEW - High-Density Compact List Rows */}
+          <div className="md:hidden flex flex-col gap-2 p-2">
+             {filteredInventory.map(car => (
+                <div 
+                  key={car.id} 
+                  onClick={() => {
+                    setEditingId(car.id);
+                    setFormData({
+                      make: car.make, model: car.model, year: car.year, retailPrice: car.rawPrice, fuelType: car.fuel,
+                      dutyStatus: String(car.duty || '').replace(/ /g, '_').toUpperCase(),
+                      plate: car.plate, vin: car.id, specifications: car.specifications || {},
+                      branchId: car.branchId,
+                      status: String(car.status || 'SOURCING').replace(/ /g, '_').toUpperCase(),
+                      certifiedKm: car.certifiedKm || '',
+                      gallery: car.gallery || [], internalDocuments: car.internalDocuments || [],
+                      unitCost: car.unitCost, floorPlanLoan: car.floorPlanLoan, maturityDate: car.maturityDate, soldDate: car.soldDate
+                    });
+                    setIsAdding(true);
+                  }}
+                  className="bg-surface-card rounded-xl border border-border-subtle/30 cursor-pointer hover:border-primary-main/30 flex items-center p-2 gap-3 transition-all active:scale-[0.98] shadow-sm relative group overflow-hidden"
+                >
+                   {/* Square Thumbnail - 14x14 units = 56px */}
+                   <div className="w-14 h-14 rounded-lg overflow-hidden border border-border-subtle/30 bg-bg-secondary shrink-0 relative shadow-inner">
+                     <img src={car.image} alt={car.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                     {car.floorPlanLoan && <div className="absolute inset-0 border-2 border-warning rounded-lg" />}
+                     <div className="absolute bottom-0.5 right-0.5 bg-black/80 rounded px-1 py-0.2 text-[7px] font-bold text-white tracking-widest uppercase">
+                        #{car.id.substring(0,4)}
                      </div>
-                     <div className="mt-1.5 flex items-center justify-between">
-                       <p className="text-xs font-black text-primary-main tracking-tight leading-none">{car.priceFormatted}</p>
-                       <div className={cn("px-1.5 py-0.5 rounded-md text-[8px] font-bold border", 
-                         car.duty === 'DUTY PAID' ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20")}>
-                         {car.duty.split(' ')[0]}
-                       </div>
-                     </div>
-                  </div>
+                   </div>
+                   
+                   {/* Info Area */}
+                   <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex items-baseline justify-between gap-2">
+                         <h3 className="text-xs font-bold text-text-main leading-tight tracking-tight truncate">
+                           {car.year} {car.make} <span className="font-medium text-text-muted">{car.model}</span>
+                         </h3>
+                         <span className="text-xs font-black text-primary-main tracking-tight leading-none shrink-0">
+                           {car.priceFormatted}
+                         </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mt-1">
+                         <div className={cn("px-1.5 py-0.5 rounded text-[8px] font-bold border shrink-0", 
+                           car.duty === 'DUTY PAID' ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20")}>
+                           {car.duty === 'DUTY PAID' ? 'Tax Paid' : car.duty === 'DUTY FREE' ? 'Tax Exempt' : car.duty}
+                         </div>
+                         {car.status && (
+                           <div className="px-1.5 py-0.5 rounded bg-bg-secondary text-text-muted border border-border-subtle/30 text-[8px] font-bold uppercase truncate max-w-[100px]">
+                             {String(car.status).replace(/_/g, ' ')}
+                           </div>
+                         )}
+                         {car.certifiedKm && (
+                           <div className="text-[9px] text-text-dim truncate">
+                             {car.certifiedKm} km
+                           </div>
+                         )}
+                      </div>
+                   </div>
 
-                   {/* Actions */}
-                  <div className="grid grid-cols-2 gap-1.5 mt-2.5 pt-2.5 border-t border-border-subtle/30">
-                     <button 
-                       onClick={() => {
-                         setEditingId(car.id);
-                         setFormData({
-                           make: car.make, model: car.model, year: car.year, retailPrice: car.rawPrice, fuelType: car.fuel,
-                           dutyStatus: String(car.duty || '').replace(/ /g, '_').toUpperCase(),
-                           plate: car.plate, vin: car.id, specifications: car.specifications || {},
-                           branchId: car.branchId,
-                           status: String(car.status || 'SOURCING').replace(/ /g, '_').toUpperCase(),
-                           certifiedKm: car.certifiedKm || '',
-                           gallery: car.gallery || [], internalDocuments: car.internalDocuments || [],
-                           unitCost: car.unitCost, floorPlanLoan: car.floorPlanLoan, maturityDate: car.maturityDate, soldDate: car.soldDate
-                         });
-                         setIsAdding(true);
-                       }}
-                       className="flex items-center justify-center gap-1 py-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-muted/60 border border-border-subtle/30 rounded-lg text-[9px] font-black uppercase active:scale-95 transition-all"
-                     >
-                       <Edit2 size={10} /> Edit
-                     </button>
-                     <button 
-                       onClick={() => {
-                         setSelectedAsset(car);
-                         setPrintReceiptOpen(true);
-                       }}
-                       className="flex items-center justify-center gap-1 py-1.5 bg-text-main text-bg rounded-lg text-[9px] font-black uppercase active:scale-95 transition-transform"
-                     >
-                       <Printer size={10} /> Rec.
-                     </button>
-                  </div>
-               </div>
-            ))}
-         </div>
+                   {/* Quick Receipt Action */}
+                   <button 
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setSelectedAsset(car);
+                       setPrintReceiptOpen(true);
+                     }}
+                     className="w-8 h-8 flex items-center justify-center bg-bg-secondary hover:bg-bg-secondary/80 text-text-muted hover:text-text-main border border-border-subtle/30 rounded-lg active:scale-90 transition-all shrink-0"
+                     title="Print Receipt"
+                   >
+                     <Printer size={12} />
+                   </button>
+                </div>
+             ))}
+          </div>
       </div>
 
       <Modal

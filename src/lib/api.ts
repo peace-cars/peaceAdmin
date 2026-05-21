@@ -65,6 +65,8 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
   };
 
   const executeRequest = async (): Promise<T> => {
+    let rawData: any;
+    
     // Use Native HTTP for Mobile
     if (Capacitor.isNativePlatform()) {
       const response = await CapacitorHttp.request({
@@ -79,16 +81,23 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
       if (response.status >= 400) {
         throw new Error(response.data?.message || `API Error ${response.status}`);
       }
-      return response.data;
+      rawData = response.data;
+    } else {
+      // Fallback for Web/PWA
+      const response = await fetch(url, { ...options, headers });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: 'API request failed' }));
+        throw new Error(error.message || 'API request failed');
+      }
+      rawData = await response.json();
     }
 
-    // Fallback for Web/PWA
-    const response = await fetch(url, { ...options, headers });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'API request failed' }));
-      throw new Error(error.message || 'API request failed');
+    // Safely unwrap standard enterprise response wrapper if present
+    if (rawData && typeof rawData === 'object' && 'success' in rawData && 'data' in rawData) {
+      return rawData.data;
     }
-    return response.json();
+    
+    return rawData;
   };
 
   try {

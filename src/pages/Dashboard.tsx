@@ -52,14 +52,17 @@ export default function Dashboard() {
   const [staffTasks, setStaffTasks] = useState<any[]>([]);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
 
   useEffect(() => {
     if (!session) return;
 
     setLoadingMetrics(true);
+    
+    const branchQuery = selectedBranch !== 'ALL' ? `?branchId=${selectedBranch}` : '';
 
     const promises: Promise<any>[] = [
-      api.get<any[]>('/staff-performance/leaderboard')
+      api.get<any[]>(`/staff-performance/leaderboard${branchQuery}`)
         .then(data => setLeaderboard(Array.isArray(data) ? data : []))
         .catch(console.error),
       api.get<any>('/settings')
@@ -70,15 +73,21 @@ export default function Dashboard() {
     if (role === 'GENERAL_MANAGER') {
       promises.push(
         Promise.all([
-          api.get<any[]>('/vehicles/profitability'),
+          api.get<any[]>(`/vehicles/profitability${branchQuery}`),
           api.get<any[]>('/locations'),
-          api.get<any[]>('/commission-workflow'),
+          api.get<any[]>(`/commission-workflow${branchQuery}`),
           api.get<any[]>('/locations/districts/overview')
         ]).then(([profitData, locationData, commissionData, districtData]) => {
           setProfitability(Array.isArray(profitData) ? profitData : []);
           setBranchCount(Array.isArray(locationData) ? locationData.length : 0);
           setDmBranches(Array.isArray(locationData) ? locationData : []);
-          setDistrictOverview(Array.isArray(districtData) ? districtData : []);
+          
+          if (selectedBranch === 'ALL') {
+             setDistrictOverview(Array.isArray(districtData) ? districtData : []);
+          } else {
+             // Filter overview or just hide it
+             setDistrictOverview(Array.isArray(districtData) ? districtData.filter((d: any) => d.district_id === selectedBranch) : []);
+          }
           
           if (Array.isArray(commissionData)) {
             const pending = commissionData
@@ -92,7 +101,7 @@ export default function Dashboard() {
 
     if (role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER') {
       promises.push(
-        api.get<any[]>('/people')
+        api.get<any[]>(`/people${branchQuery}`)
           .then(data => {
             const active = Array.isArray(data) ? data.filter((s: any) => s.isActive) : [];
             setBranchStaff(active);
@@ -120,16 +129,16 @@ export default function Dashboard() {
     const needsPipelineData = role === 'DISTRICT_MANAGER' || role === 'FINANCE_AUDITOR' || role === 'GENERAL_MANAGER';
     if (needsPipelineData) {
       promises.push(
-        api.get<any[]>('/staff-budgets').then(data => setBudgets(Array.isArray(data) ? data : [])).catch(console.error),
-        api.get<any[]>('/trade-in-requests').then(data => setTradeIns(Array.isArray(data) ? data : [])).catch(console.error),
-        api.get<any[]>('/vehicles').then(data => setShowroomCount(Array.isArray(data) ? data.length : 0)).catch(console.error)
+        api.get<any[]>(`/staff-budgets${branchQuery}`).then(data => setBudgets(Array.isArray(data) ? data : [])).catch(console.error),
+        api.get<any[]>(`/trade-in-requests${branchQuery}`).then(data => setTradeIns(Array.isArray(data) ? data : [])).catch(console.error),
+        api.get<any[]>(`/vehicles${branchQuery}`).then(data => setShowroomCount(Array.isArray(data) ? data.length : 0)).catch(console.error)
       );
     }
 
     Promise.all(promises).finally(() => {
       setLoadingMetrics(false);
     });
-  }, [session, role]);
+  }, [session, role, selectedBranch]);
 
   // Actions
   const assignTaskToStaff = async (tradeInId: string, staffId: string) => {
@@ -223,7 +232,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 pb-20">
       {/* Welcome Header */}
-      <div className="pb-6 border-b border-border-subtle/30">
+      <div className="pb-6 border-b border-border-subtle/30 flex flex-col md:flex-row md:items-end justify-between gap-4">
          <div className="space-y-1">
             <p className="text-[13px] text-text-muted/60">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
             <h1 className="text-2xl font-bold text-text-main tracking-tight">Welcome back, {ADMIN_NAME.split(' ')[0]}</h1>
@@ -239,6 +248,23 @@ export default function Dashboard() {
                <Badge variant="primary">{(role || '').replace(/_/g, ' ')}</Badge>
             </div>
          </div>
+         
+         {/* Branch Filter Dropdown */}
+         {(role === 'GENERAL_MANAGER' || role === 'DISTRICT_MANAGER') && dmBranches.length > 0 && (
+           <div className="flex items-center gap-2">
+             <span className="text-[13px] font-medium text-text-muted">Viewing:</span>
+             <select 
+               className="bg-surface-card border border-border-subtle text-[13px] md:text-[14px] font-semibold h-10 px-3 pr-8 rounded-xl text-text-main outline-none focus:border-primary-main/50 appearance-none cursor-pointer shadow-sm transition-all"
+               value={selectedBranch}
+               onChange={(e) => setSelectedBranch(e.target.value)}
+             >
+               <option value="ALL">National Overview</option>
+               {dmBranches.map(b => (
+                 <option key={b.id} value={b.id}>{b.name || b.code}</option>
+               ))}
+             </select>
+           </div>
+         )}
       </div>
 
       <div className="space-y-8">

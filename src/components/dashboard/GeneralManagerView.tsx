@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Wallet, Building2, Calculator, Shield, User, CarFront, Users, MapPin, Map, Database, CheckCircle2, X, Loader2 } from 'lucide-react';
+import React from 'react';
+import { LineChart, Wallet, Building2, Calculator, Shield, User, CarFront, Users, MapPin, Map, Database, CheckCircle2 } from 'lucide-react';
 import { KpiTile } from '../ui/KpiTile';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../lib/utils';
 import { SkeletonKpi, SkeletonCard } from '../ui/Skeleton';
-import { DistrictManagerView } from './DistrictManagerView';
-import { api } from '../../lib/api';
 
 interface GeneralManagerViewProps {
   loadingMetrics: boolean;
@@ -44,41 +42,6 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
   onViewReport
 }) => {
   const escalatedLeads = tradeIns.filter(t => t.status === 'ESCALATED_TO_GM' || t.status === 'MANAGER_REVIEW');
-  const [selectedBranch, setSelectedBranch] = useState<any>(null);
-  const [branchLeads, setBranchLeads] = useState<any[]>([]);
-  const [branchBudgets, setBranchBudgets] = useState<any[]>([]);
-  const [loadingBranchLeads, setLoadingBranchLeads] = useState(false);
-
-  // Live-fetch branch pipeline data when a branch is selected
-  useEffect(() => {
-    if (!selectedBranch) return;
-    setLoadingBranchLeads(true);
-    setBranchLeads([]);
-    Promise.all([
-      api.get<any[]>(`/trade-in-requests?locationId=${selectedBranch.id}`)
-        .catch(() => api.get<any[]>('/trade-in-requests')),
-      api.get<any[]>('/staff-budgets').catch(() => [])
-    ])
-      .then(([leads, budgets]) => {
-        const allLeads = Array.isArray(leads) ? leads : [];
-        // Filter by branch strictly matching selectedBranch.id (using both branch/location fields)
-        const filtered = allLeads.filter((t: any) =>
-          t.branch_id === selectedBranch.id ||
-          t.branchId === selectedBranch.id ||
-          t.location_id === selectedBranch.id ||
-          t.locationId === selectedBranch.id
-        );
-        setBranchLeads(filtered);
-        const bBudgets = Array.isArray(budgets) ? budgets : [];
-        setBranchBudgets(bBudgets.filter((b: any) =>
-          b.branch_id === selectedBranch.id ||
-          b.branchId === selectedBranch.id ||
-          b.location_id === selectedBranch.id ||
-          b.locationId === selectedBranch.id
-        ));
-      })
-      .finally(() => setLoadingBranchLeads(false));
-  }, [selectedBranch?.id]);
 
   if (loadingMetrics) {
     return (
@@ -145,12 +108,14 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
         </div>
       </div>
       
-      {/* District Overview */}
+      {/* District/Branch Overview */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <Map size={16} className="text-primary-main" />
-            <h2 className="text-[15px] font-semibold text-text-main">National Overview</h2>
+            <h2 className="text-[15px] font-semibold text-text-main">
+              {districtOverview.length === 1 ? `${districtOverview[0].district_name} Overview` : 'National Overview'}
+            </h2>
           </div>
           <Badge variant="primary">Live</Badge>
         </div>
@@ -207,25 +172,26 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
       </div>
 
       {/* Regional Branches Oversight */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 px-1">
-          <Building2 size={16} className="text-primary-main" />
-          <h2 className="text-[15px] font-semibold text-text-main">Regional Branches</h2>
+      {districtOverview.length !== 1 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Building2 size={16} className="text-primary-main" />
+            <h2 className="text-[15px] font-semibold text-text-main">Regional Branches</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {dmBranches.map(branch => (
+              <div
+                key={branch.id}
+                className="bg-surface-card border border-border-subtle/30 rounded-2xl p-4 flex flex-col items-start gap-1 text-left transition-all w-full"
+              >
+                <Building2 size={16} className="text-text-muted transition-colors mb-1" />
+                <p className="text-[13px] font-bold text-text-main leading-tight truncate w-full">{branch.name}</p>
+                <p className="text-[11px] text-text-muted uppercase tracking-wider">{branch.code || 'BRANCH'}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {dmBranches.map(branch => (
-            <button
-              key={branch.id}
-              onClick={() => setSelectedBranch(branch)}
-              className="bg-surface-card border border-border-subtle/30 rounded-2xl p-4 flex flex-col items-start gap-1 text-left hover:border-primary-main/30 hover:shadow-md transition-all active:scale-95 group w-full cursor-pointer"
-            >
-              <Building2 size={16} className="text-text-muted group-hover:text-primary-main transition-colors mb-1" />
-              <p className="text-[13px] font-bold text-text-main leading-tight truncate w-full">{branch.name}</p>
-              <p className="text-[11px] text-text-muted uppercase tracking-wider">{branch.code || 'BRANCH'}</p>
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
       
       {/* Escalated Pipeline */}
       <div className="space-y-3">
@@ -323,66 +289,6 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
         </div>
       </div>
 
-      {/* Floating Read-Only Drawer */}
-      {selectedBranch && (
-        <div className="fixed inset-0 z-[200] flex justify-end">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setSelectedBranch(null)}
-          />
-          {/* Panel */}
-          <div className="relative w-full max-w-4xl bg-surface-card h-full shadow-2xl flex flex-col border-l border-border-subtle/50 animate-in slide-in-from-right duration-300 overflow-y-auto no-scrollbar p-6">
-            <div className="flex items-center justify-between pb-4 border-b border-border-subtle/30 mb-6">
-              <div>
-                <h2 className="text-lg font-bold text-text-main uppercase tracking-tight flex items-center gap-2">
-                  <Building2 className="text-primary-main" size={20} /> {selectedBranch.name} Pipeline
-                </h2>
-                <p className="text-[12px] text-text-muted">Executive read-only branch oversight</p>
-              </div>
-              <button 
-                onClick={() => setSelectedBranch(null)}
-                className="w-8 h-8 rounded-full bg-bg-secondary hover:bg-surface-hover flex items-center justify-center text-text-muted hover:text-text-main transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            {loadingBranchLeads ? (
-              <div className="flex flex-col items-center justify-center py-24 gap-4">
-                <Loader2 size={32} className="text-primary-main animate-spin" />
-                <p className="text-[12px] font-bold text-text-muted uppercase tracking-widest">Loading branch pipeline...</p>
-              </div>
-            ) : (
-              <div>
-                <div className="mb-4 flex items-center gap-2 p-3 bg-bg-secondary rounded-xl border border-border-subtle/30">
-                  <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
-                  <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Live Data — {branchLeads.length} leads in pipeline</p>
-                </div>
-                <DistrictManagerView 
-                  tradeIns={branchLeads}
-                  showroomCount={0}
-                  budgets={branchBudgets}
-                  branchStaff={branchStaff.filter(s =>
-                    s.locationId === selectedBranch.id ||
-                    s.location_id === selectedBranch.id ||
-                    s.branchId === selectedBranch.id ||
-                    s.branch_id === selectedBranch.id
-                  )}
-                  dmBranches={[selectedBranch]}
-                  role="GENERAL_MANAGER"
-                  activeQueueTab="Authorization Pending"
-                  onAssignTask={() => {}}
-                  onApprove={(id, price) => onApprove(id, price)}
-                  onReject={(id, reason) => onReject(id, reason)}
-                  onViewReport={(lead) => onViewReport(lead)}
-                  onEscalate={() => {}}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

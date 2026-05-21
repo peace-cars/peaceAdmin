@@ -15,7 +15,9 @@ import {
   ArrowRight,
   X,
   Camera,
-  Printer
+  Printer,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
@@ -56,6 +58,7 @@ const Acquisitions = () => {
   const [activeTab, setActiveTab] = useState('new');
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [printReportOpen, setPrintReportOpen] = useState(false);
   const [viewReportOpen, setViewReportOpen] = useState(false);
   const [branchStaff, setBranchStaff] = useState<any[]>([]);
@@ -192,8 +195,8 @@ const Acquisitions = () => {
   };
 
   return (
-    <div className="animate-fade-in relative">
-      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-3 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/50 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-6 shadow-sm">
+    <div className="animate-fade-in relative min-h-screen">
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-3 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/50 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 shadow-sm">
          <div className="flex bg-bg-secondary p-1 rounded-xl overflow-x-auto no-scrollbar w-full md:w-auto">
             {columns.map(col => (
               <button 
@@ -222,6 +225,34 @@ const Acquisitions = () => {
               className="bg-bg-secondary border border-border-subtle rounded-xl h-11 pl-10 pr-4 text-[14px] text-text-main focus:outline-none focus:border-primary-main/30 focus:ring-2 focus:ring-primary-main/10 transition-all w-full md:w-72 placeholder:text-text-muted" 
             />
          </div>
+         <div className="flex items-center gap-2 md:ml-4">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                'w-10 h-10 rounded-xl border transition-all flex items-center justify-center',
+                viewMode === 'grid'
+                  ? 'bg-primary-main text-white border-primary-main shadow-sm'
+                  : 'bg-bg-secondary text-text-muted border-border-subtle hover:text-text-main hover:border-border-subtle/60'
+              )}
+              title="Grid view"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={cn(
+                'w-10 h-10 rounded-xl border transition-all flex items-center justify-center',
+                viewMode === 'list'
+                  ? 'bg-primary-main text-white border-primary-main shadow-sm'
+                  : 'bg-bg-secondary text-text-muted border-border-subtle hover:text-text-main hover:border-border-subtle/60'
+              )}
+              title="List view"
+            >
+              <List size={18} />
+            </button>
+         </div>
       </div>
 
       <div className={cn(
@@ -247,27 +278,32 @@ const Acquisitions = () => {
                      </button>
                   </Tooltip>
                </div>
-               <p className="text-[13px] text-text-muted">
-                  {column.id === 'new' && 'Incoming evaluation requests'}
-                  {column.id === 'appraisal' && 'Technical & safety inspection'}
-                  {column.id === 'review' && 'Final management authorization'}
-                  {column.id === 'offer' && 'Price negotiation & agreement'}
-                  {column.id === 'acquired' && 'Asset finalized in registry'}
-               </p>
             </div>
 
             <div className={cn(
                 "flex-1 bg-bg-secondary p-2 md:p-4 rounded-2xl border border-border-subtle min-h-[400px] transition-all",
-                activeTab === 'all' ? "grid grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3" : "grid grid-cols-2 lg:grid-cols-3 gap-2 md:gap-3 auto-rows-min"
+                viewMode === 'list'
+                  ? 'grid grid-cols-1 gap-3'
+                  : 'grid grid-cols-1 md:grid-cols-2 gap-3'
             )}>
                {column.items.map((item: any) => (
                  <div 
                   key={item.id} 
                   onClick={() => setSelectedLead(item)}
-                  className="bg-surface-card rounded-xl border border-border-subtle flex cursor-pointer hover:border-primary-main/30 hover:shadow-md transition-all p-2.5 gap-3 items-center group relative overflow-hidden shadow-sm"
+                  className={cn(
+                    "bg-surface-card rounded-xl border border-border-subtle cursor-pointer hover:border-primary-main/30 hover:shadow-md transition-all overflow-hidden shadow-sm group relative",
+                    viewMode === 'grid'
+                      ? 'flex flex-col p-3 h-full'
+                      : 'flex flex-row items-center gap-4 p-4'
+                  )}
                  >
                     {/* Thumbnail Image Container */}
-                    <div className="w-16 h-16 rounded-lg overflow-hidden border border-border-subtle/50 bg-bg-base shrink-0 relative shadow-inner">
+                    <div className={cn(
+                      "rounded-lg overflow-hidden border border-border-subtle/50 bg-bg-base relative shadow-inner shrink-0",
+                      viewMode === 'grid'
+                        ? 'w-full aspect-[4/3]'
+                        : 'w-24 h-20'
+                    )}>
                       {item.photos && item.photos.length > 0 ? (
                         <img 
                           src={item.photos[0]} 
@@ -289,7 +325,10 @@ const Acquisitions = () => {
                     </div>
 
                     {/* Info Section */}
-                    <div className="flex-grow min-w-0 space-y-1">
+                    <div className={cn(
+                      "flex flex-col justify-between flex-grow min-w-0 space-y-2",
+                      viewMode === 'list' ? 'min-h-[100px]' : ''
+                    )}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[12px] font-bold text-text-main truncate group-hover:text-primary-main transition-colors leading-tight">{item.vehicle}</p>

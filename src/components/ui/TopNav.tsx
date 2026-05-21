@@ -50,20 +50,15 @@ export const TopNav: React.FC<TopNavProps> = ({
           </span>
       </div>
 
-      {/* Center: Search (desktop only) - More integrated design */}
-      <div className="hidden md:flex flex-1 justify-center max-w-lg mx-12">
-        <div className="relative w-full group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <Search size={14} className="text-text-muted/40 group-focus-within:text-primary-main transition-colors" />
-          </div>
-          <input 
-            placeholder="Global Registry Search..." 
-            className="w-full bg-bg-secondary/40 border border-border-subtle/20 rounded-2xl py-2.5 pl-11 pr-4 text-[13px] font-bold text-text-main placeholder:text-text-muted/30 focus:outline-none focus:border-primary-main/30 focus:bg-bg-secondary/60 focus:ring-4 focus:ring-primary-main/5 transition-all shadow-sm" 
-          />
-          <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-             <span className="text-[9px] font-black text-text-muted/20 border border-border-subtle/30 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">CMD + K</span>
-          </div>
-        </div>
+      {/* Center: Search (desktop only) - Compact button */}
+      <div className="hidden md:flex flex-1 justify-center">
+        <button
+          type="button"
+          className="h-11 w-11 rounded-2xl bg-bg-secondary/30 border border-border-subtle/20 flex items-center justify-center text-text-muted hover:text-text-main hover:bg-bg-secondary/50 transition-all"
+          aria-label="Open global search"
+        >
+          <Search size={16} />
+        </button>
       </div>
 
       {/* Right: Actions */}

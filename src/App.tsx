@@ -1,6 +1,9 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
+import { ScrollToTop } from './components/ui/ScrollToTop';
+import { CapacitorBackButtonHandler } from './components/ui/CapacitorBackButtonHandler';
+import { Capacitor } from '@capacitor/core';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Acquisitions = lazy(() => import('./pages/Acquisitions'));
 const InspectionReports = lazy(() => import('./pages/InspectionReports'));
@@ -27,10 +30,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [showNotifs, setShowNotifs] = useState(false);
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (session?.user?.id && Capacitor.isNativePlatform()) {
       initializePushNotifications(session.user.id);
     }
   }, [session]);
+
+  const handleToggleNotifs = async () => {
+    if (session?.user?.id && !Capacitor.isNativePlatform() && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        await initializePushNotifications(session.user.id, true);
+      }
+    }
+    setShowNotifs(prev => !prev);
+  };
+
   const [scope, setScope] = useState<any>(null);
   const role = localStorage.getItem('admin_role');
 
@@ -115,7 +129,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 import Splash from './components/ui/Splash';
-import { CapacitorBackButtonHandler } from './components/ui/CapacitorBackButtonHandler';
 
 function App() {
   const { session } = useAuth();
@@ -128,6 +141,7 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <CapacitorBackButtonHandler />
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-bg-base text-text-muted">Loading page…</div>}>
         <Routes>

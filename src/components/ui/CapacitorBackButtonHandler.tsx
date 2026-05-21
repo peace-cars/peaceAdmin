@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { App } from '@capacitor/app';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
@@ -7,24 +7,39 @@ export function CapacitorBackButtonHandler() {
   const [showExitModal, setShowExitModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const historyLengthRef = useRef(window.history.length);
+
+  useEffect(() => {
+    // Update history length on route change
+    historyLengthRef.current = window.history.length;
+  }, [location]);
 
   useEffect(() => {
     let handler: any;
 
     const setupListener = async () => {
-      handler = await App.addListener('backButton', ({ canGoBack }) => {
+      handler = await App.addListener('backButton', () => {
         // Paths considered root pages where pressing back prompts app exit
         const rootPaths = ['/', '/login', '/acquisitions', '/inspections', '/inbox', '/inventory', '/staff', '/branches', '/people', '/commissions', '/budgets', '/reports', '/finance', '/library', '/archive', '/notifications'];
         const currentPath = location.pathname.toLowerCase();
         
-        // If we are at a root route, we ask the user if they want to exit
+        // Check if current page is a root/home page
         const isRoot = rootPaths.includes(currentPath) || currentPath === '/' || currentPath === '';
 
+        // Use history length to determine if we can go back
+        // history.length > 1 means there's a page before the current one
+        const canGoBack = window.history.length > 1;
+
         if (canGoBack && !isRoot) {
-          // If we can go back and we are in a subpage, navigate back
+          // If we can go back and we are in a subpage, navigate back and scroll to top
+          window.scrollTo(0, 0);
+          navigate(-1);
+        } else if (!isRoot && canGoBack) {
+          // Fallback: if not at root but can go back, do it anyway
+          window.scrollTo(0, 0);
           navigate(-1);
         } else {
-          // Trigger confirmation dialog
+          // At root page: trigger confirmation dialog for app exit
           setShowExitModal(true);
         }
       });

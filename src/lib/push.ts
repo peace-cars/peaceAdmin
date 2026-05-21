@@ -15,7 +15,7 @@ const firebaseConfig = {
 /**
  * Register push notification listeners and request permissions on Capacitor native platforms
  */
-export async function initializePushNotifications(userId: string) {
+export async function initializePushNotifications(userId: string, userGesture = false) {
   if (Capacitor.isNativePlatform()) {
     try {
       // 1. Check/Request Permissions
@@ -80,7 +80,16 @@ export async function initializePushNotifications(userId: string) {
         return;
       }
 
-      const permission = await Notification.requestPermission();
+      const currentPermission = Notification.permission;
+      if (currentPermission === 'default' && !userGesture) {
+        console.log('[Push] Web Push permission request deferred until user gesture.');
+        return;
+      }
+
+      const permission = currentPermission === 'default'
+        ? await Notification.requestPermission()
+        : currentPermission;
+
       if (permission !== 'granted') {
         console.warn('[Push] Web Push permission denied.');
         return;

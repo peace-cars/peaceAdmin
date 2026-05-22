@@ -3,6 +3,7 @@ import {
   FileText, CheckCircle2, Clock, AlertTriangle, 
   Search, User, BarChart3, TrendingUp, Star
 } from "lucide-react";
+import { unwrapApiResponse } from '../lib/api';
 import { useAuth } from "../lib/auth";
 import { PageHeader } from "../components/ui/PageHeader";
 import { SectionCard } from "../components/ui/SectionCard";
@@ -22,7 +23,7 @@ export default function StaffReports() {
         const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/staff-performance/leaderboard`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
-        const data = await res.json();
+            const data = unwrapApiResponse(await res.json());
         setPersonnelMetrics(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);

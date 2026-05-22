@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { UserPlus, MapPin, Power, X, Users, ShieldCheck, Zap, Building2, Edit } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../lib/auth';
+import { unwrapApiResponse } from '../lib/api';
 import { PageHeader } from '../components/ui/PageHeader';
 import { KpiTile } from '../components/ui/KpiTile';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -15,7 +16,7 @@ export default function PeopleManagement() {
   const [branches, setBranches] = useState<any[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [editingPerson, setEditingPerson] = useState<any>(null);
-  const [form, setForm] = useState({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: '1.0' });
+  const [form, setForm] = useState({ fullName: '', phone: '', role: 'STAFF', branchId: '', commissionTier: '1.0' });
 
   useEffect(() => {
     if (!session) return;
@@ -23,18 +24,18 @@ export default function PeopleManagement() {
     
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people`, { headers })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setPeople(data); else setPeople([]); })
+      .then(data => { const result = unwrapApiResponse(data); if (Array.isArray(result)) setPeople(result); else setPeople([]); })
       .catch(err => { console.error(err); setPeople([]); });
       
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/locations`, { headers })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setBranches(data); else setBranches([]); })
+      .then(data => { const result = unwrapApiResponse(data); if (Array.isArray(result)) setBranches(result); else setBranches([]); })
       .catch(err => { console.error(err); setBranches([]); });
   }, [session]);
 
   const handleCreate = async () => {
     if (!session) return;
-    const branch = branches.find((b: any) => b.id === form.locationId);
+    const branch = branches.find((b: any) => b.id === form.branchId);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people`, {
         method: 'POST', 
@@ -66,8 +67,8 @@ export default function PeopleManagement() {
         commissionTier: Number(form.commissionTier)
       };
       
-      if (form.locationId && form.locationId.trim() !== '') {
-        payload.locationId = form.locationId;
+      if (form.branchId && form.branchId.trim() !== '') {
+        payload.branchId = form.branchId;
       }
 
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people/${editingPerson.id}`, {
@@ -92,13 +93,13 @@ export default function PeopleManagement() {
             fullName: form.fullName, 
             phone: form.phone, 
             role: form.role, 
-            locationId: form.locationId, 
+            branchId: form.branchId, 
             locationName: branch?.name || 'Updated',
             commissionTier: Number(form.commissionTier)
         } : p));
         setShowCreate(false);
         setEditingPerson(null);
-        setForm({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: '1.0' });
+        setForm({ fullName: '', phone: '', role: 'STAFF', branchId: '', commissionTier: '1.0' });
       }
     } catch (err) {
       console.error(err);
@@ -111,7 +112,7 @@ export default function PeopleManagement() {
       fullName: person.fullName,
       phone: person.phone,
       role: person.role,
-      locationId: person.locationId || person.location_id || '',
+      branchId: person.branchId || person.branch_id || '',
       commissionTier: (person.commissionTier || 1.0).toString()
     });
     setShowCreate(true);
@@ -150,7 +151,7 @@ export default function PeopleManagement() {
           subtitle="Operational oversight of administrative and showroom personnel."
           icon={<Users size={18} className="text-primary-main" />}
           actions={
-            <Button variant="primary" size="sm" onClick={() => { setEditingPerson(null); setShowCreate(true); setForm({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: '1.0' }); }} className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all w-full md:w-auto">
+            <Button variant="primary" size="sm" onClick={() => { setEditingPerson(null); setShowCreate(true); setForm({ fullName: '', phone: '', role: 'STAFF', branchId: '', commissionTier: '1.0' }); }} className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all w-full md:w-auto">
               New Onboarding
             </Button>
           }
@@ -252,8 +253,8 @@ export default function PeopleManagement() {
                  <SelectField 
                    label="Registry Hub" 
                    options={[{value:'',label:'Select branch hub...'}, ...branches.filter((b: any) => b.is_active).map((b: any) => ({value: b.id, label: b.name}))]} 
-                   value={form.locationId} 
-                   onChange={v => setForm(p => ({ ...p, locationId: v }))} 
+                   value={form.branchId} 
+                   onChange={v => setForm(p => ({ ...p, branchId: v }))} 
                  />
 
                   <div className="flex gap-3 pt-4">
@@ -261,7 +262,7 @@ export default function PeopleManagement() {
                     <Button 
                         variant="primary" 
                         className="flex-1 bg-text-main text-bg h-11 rounded-xl text-[12px] font-bold shadow-xl active:scale-95 transition-all" 
-                        disabled={!form.fullName || !form.phone || !form.locationId}
+                        disabled={!form.fullName || !form.phone || !form.branchId}
                         onClick={editingPerson ? handleUpdate : handleCreate}
                       >
                         {editingPerson ? 'Update Registry' : 'Authorize Entity'}

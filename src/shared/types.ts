@@ -11,7 +11,7 @@ export interface Vehicle {
   certifiedKm?: number;
   batterySoh?: number;
   status: string;
-  branchId: string;
+  branch_id: string;
   inquiryCount?: number;
   vinChassis?: string;
   plateCode?: string;

@@ -8,7 +8,7 @@ interface UserProfile {
   role: string;
   full_name: string;
   phone_number: string | null;
-  location_id: string | null;
+  branch_id?: string | null;
   is_verified: boolean;
   is_inspector_verified: boolean;
   gamification_points: number;
@@ -79,12 +79,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.removeItem('admin_session');
                 localStorage.removeItem('admin_role');
                 localStorage.removeItem('admin_location');
+                localStorage.removeItem('admin_selected_branch');
                 setSession(null);
               }
             } else {
               localStorage.removeItem('admin_session');
               localStorage.removeItem('admin_role');
               localStorage.removeItem('admin_location');
+              localStorage.removeItem('admin_selected_branch');
               setSession(null);
             }
           } else {
@@ -97,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (e) {
           console.error('[Admin Auth] Init error:', e);
           localStorage.removeItem('admin_session');
+          localStorage.removeItem('admin_selected_branch');
         }
       }
       setLoading(false);
@@ -177,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const role = data.profile?.role;
-      if (role !== 'GENERAL_MANAGER' && role !== 'DISTRICT_MANAGER' && role !== 'STAFF') {
+      if (role !== 'GENERAL_MANAGER' && role !== 'DISTRICT_MANAGER' && role !== 'STAFF' && role !== 'FINANCE_AUDITOR') {
         return { error: 'ACCESS DENIED: Insufficient privilege level.' };
       }
 
@@ -191,7 +194,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       localStorage.setItem('admin_session', JSON.stringify(sessionData));
       localStorage.setItem('admin_role', role);
-      localStorage.setItem('admin_location', data.profile?.location_id || 'HQ');
+      localStorage.setItem('admin_branch_id', data.profile?.branch_id || 'HQ');
+      localStorage.removeItem('admin_selected_branch');
       setSession(sessionData);
 
       // Handshake: Notify Supabase client
@@ -249,7 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       localStorage.setItem('admin_session', JSON.stringify(sessionData));
       localStorage.setItem('admin_role', role);
-      localStorage.setItem('admin_location', data.profile?.location_id || 'HQ');
+      localStorage.setItem('admin_branch_id', data.profile?.branch_id || 'HQ');
       setSession(sessionData);
 
       // Handshake: Notify Supabase client
@@ -268,6 +272,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('admin_session');
     localStorage.removeItem('admin_role');
     localStorage.removeItem('admin_location');
+    localStorage.removeItem('admin_selected_branch');
     setSession(null);
   };
 

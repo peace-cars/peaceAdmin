@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { ScrollToTop } from './components/ui/ScrollToTop';
 import { CapacitorBackButtonHandler } from './components/ui/CapacitorBackButtonHandler';
 import { Capacitor } from '@capacitor/core';
+import { unwrapApiResponse } from './lib/api';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Acquisitions = lazy(() => import('./pages/Acquisitions'));
 const InspectionReports = lazy(() => import('./pages/InspectionReports'));
@@ -18,6 +19,7 @@ const AssetLibrary = lazy(() => import('./pages/AssetLibrary'));
 const SupportInbox = lazy(() => import('./pages/SupportInbox'));
 const Login = lazy(() => import('./pages/Login'));
 const SoldArchive = lazy(() => import('./pages/SoldArchive'));
+const CustomOrders = lazy(() => import('./pages/CustomOrders'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const FinanceManager = lazy(() => import('./pages/FinanceManager'));
 import { AppShell } from './components/ui/AppShell';
@@ -57,7 +59,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         if (res.ok) {
-           const data = await res.json();
+           const data = unwrapApiResponse(await res.json());
            if (Array.isArray(data)) setNotifications(data);
         }
       } catch (e) {
@@ -71,7 +73,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         if (res.ok) {
-          const data = await res.json();
+          const data = unwrapApiResponse(await res.json());
           setScope(data);
           if (data.branchName) localStorage.setItem('admin_location', data.branchName);
         }
@@ -160,6 +162,7 @@ function App() {
           <Route path="/finance" element={<ProtectedRoute><FinanceManager /></ProtectedRoute>} />
           <Route path="/library" element={<ProtectedRoute><AssetLibrary /></ProtectedRoute>} />
           <Route path="/archive" element={<ProtectedRoute><SoldArchive /></ProtectedRoute>} />
+          <Route path="/custom-orders" element={<ProtectedRoute><CustomOrders /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         </Routes>
       </Suspense>

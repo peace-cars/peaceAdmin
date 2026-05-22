@@ -112,6 +112,7 @@ export const SideNav: React.FC<SideNavProps> = ({ role, onLogout, isCollapsed = 
         {!isCollapsed && <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted px-3 pb-2">Menu</p>}
         <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
         <NavItem to="/acquisitions" icon={TrendingUp} label="Pipeline" />
+        <NavItem to="/custom-orders" icon={Building2} label="Sourcing" />
         <NavItem to="/inventory" icon={Layers} label="Inventory" hidden={!(role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER')} />
         <NavItem to="/inbox" icon={MessageSquare} label="Inbox" />
         <NavItem to="/notifications" icon={Bell} label="Registry Pulse" />

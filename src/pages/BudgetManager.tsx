@@ -68,7 +68,7 @@ export default function BudgetManager() {
   const pendingReviewTotal = budgets.filter(b => b.status === 'REQUESTED').reduce((s, b) => s + b.amount_requested, 0);
   const approvedTotal = budgets.filter(b => b.status === 'APPROVED').reduce((s, b) => s + (b.amount_approved || b.amount_requested), 0);
   const totalPaidMtd = budgets.filter(b => b.status === 'DISBURSED' && new Date(b.created_at).getMonth() === new Date().getMonth()).reduce((s, b) => s + (b.amount_approved || b.amount_requested), 0);
-  const activeLocationsCount = new Set(budgets.map(b => b.location_id)).size;
+  const activeLocationsCount = new Set(budgets.map(b => b.branch_id)).size;
 
   return (
     <div className="space-y-8 pb-12">

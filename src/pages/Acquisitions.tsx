@@ -284,7 +284,7 @@ const Acquisitions = () => {
                 "flex-1 bg-bg-secondary p-2 md:p-4 rounded-2xl border border-border-subtle min-h-[400px] transition-all",
                 viewMode === 'list'
                   ? 'grid grid-cols-1 gap-3'
-                  : 'grid grid-cols-1 md:grid-cols-2 gap-3'
+              : 'grid grid-cols-2 gap-2 sm:gap-3'
             )}>
                {column.items.map((item: any) => (
                  <div 

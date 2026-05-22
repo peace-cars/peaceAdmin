@@ -132,9 +132,9 @@ const InventoryManager = () => {
       sold_date: formData.sold_date || null,
     };
 
-    // Only add location_id if it's a valid UUID string and NOT a placeholder
+    // Only add branch_id if it's a valid UUID string and NOT a placeholder
     if (typeof formData.branchId === 'string' && isUUID(formData.branchId) && !formData.branchId.startsWith('66666666')) {
-      payload.location_id = formData.branchId;
+      payload.branch_id = formData.branchId;
     }
 
     console.log('[Inventory] Saving Payload:', payload);
@@ -157,7 +157,7 @@ const InventoryManager = () => {
   const resetForm = () => {
     const defaultBranchId = session?.profile?.role === 'GENERAL_MANAGER' 
       ? (branches[0]?.id || '') 
-      : (session?.profile?.location_id || '');
+      : (session?.profile?.branch_id || '');
 
     setFormData({
       make: '', model: '', year: new Date().getFullYear(), retailPrice: '', fuelType: 'ELECTRIC', dutyStatus: 'DUTY_PAID', plate: '', vin: '',

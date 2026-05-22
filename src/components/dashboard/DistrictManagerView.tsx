@@ -70,13 +70,13 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
   
   let currentLeads = tradeIns;
   if (selectedBranchId !== 'ALL') {
-    currentLeads = tradeIns.filter(t => t.location_id === selectedBranchId || t.locationId === selectedBranchId);
+    currentLeads = tradeIns.filter(t => t.branch_id === selectedBranchId || t.locationId === selectedBranchId);
   }
   const filteredItems = currentLeads.filter(currentTab.filter);
 
   const assignableStaff = branchStaff.filter(s => 
     s.role === 'STAFF' && 
-    (selectedBranchId === 'ALL' || s.locationId === selectedBranchId || s.location_id === selectedBranchId)
+    (selectedBranchId === 'ALL' || s.locationId === selectedBranchId || s.branch_id === selectedBranchId)
   );
 
   return (

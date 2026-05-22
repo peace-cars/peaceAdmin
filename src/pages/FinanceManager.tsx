@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { API_URL } from '../lib/api';
 import { Building2, CheckCircle, XCircle, Search, Clock, FileText } from 'lucide-react';
+import { unwrapApiResponse } from '../lib/api';
 
 export default function FinanceManager() {
   const { session } = useAuth();
@@ -20,7 +21,8 @@ export default function FinanceManager() {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       if (res.ok) {
-        setPlans(await res.json());
+        const data = unwrapApiResponse(await res.json());
+        setPlans(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.error(e);

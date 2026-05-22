@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
+import { unwrapApiResponse } from '../lib/api';
 import { Bell, CheckCircle2, Trash2, Calendar, Clock, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
@@ -19,8 +20,8 @@ const Notifications: React.FC = () => {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       if (res.ok) {
-        const data = await res.json();
-        setNotifications(data || []);
+        const data = unwrapApiResponse(await res.json());
+        setNotifications(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.error("Notifications Sync Failed", e);

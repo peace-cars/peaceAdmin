@@ -43,8 +43,16 @@ function setCachedData(key: string, data: any) {
 export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<T> {
   const method = options.method || 'GET';
   const isCacheable = method === 'GET';
-  const cacheKey = btoa(endpoint); // Simple key
-  const url = `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  let finalEndpoint = endpoint;
+  if (method === 'GET') {
+    const selectedBranch = localStorage.getItem('admin_selected_branch');
+    if (selectedBranch && selectedBranch !== 'all') {
+      const separator = finalEndpoint.includes('?') ? '&' : '?';
+      finalEndpoint = `${finalEndpoint}${separator}branchId=${selectedBranch}`;
+    }
+  }
+  const cacheKey = btoa(finalEndpoint); // Branch-aware cache key
+  const url = `${API_URL}${finalEndpoint.startsWith('/') ? finalEndpoint : `/${finalEndpoint}`}`;
   
   const sessionStr = localStorage.getItem('admin_session');
   let token = null;
@@ -122,6 +130,13 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
     console.error('[API] Fatal Error:', error);
     throw error;
   }
+}
+
+export function unwrapApiResponse(payload: any): any {
+  if (payload && typeof payload === 'object' && 'success' in payload) {
+    return payload.data;
+  }
+  return payload;
 }
 
 export const api = {

@@ -50,7 +50,7 @@ export default function BranchRoster() {
         averageRating: s.performance_rating || 5.0,
         shiftStartedAt: s.shiftStartedAt || null,
         dateOfBirth: s.date_of_birth || null,
-        locationId: s.location_id
+        locationId: s.branch_id
       }));
       setRoster(mapped); 
       setLoading(false); 

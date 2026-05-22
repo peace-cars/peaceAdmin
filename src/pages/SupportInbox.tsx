@@ -5,6 +5,7 @@ import {
   CheckCircle, AlertCircle, Phone, ChevronRight, ChevronLeft, Inbox
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { unwrapApiResponse } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Badge } from '../components/ui/Badge';
@@ -47,7 +48,10 @@ export default function SupportInbox() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/conversations`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      if (res.ok) { setConversations(await res.json()); }
+      if (res.ok) {
+        const result = unwrapApiResponse(await res.json());
+        setConversations(Array.isArray(result) ? result : []);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -57,7 +61,10 @@ export default function SupportInbox() {
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/${convId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
       });
-      if (res.ok) { setMessages(await res.json()); }
+      if (res.ok) {
+        const result = unwrapApiResponse(await res.json());
+        setMessages(Array.isArray(result) ? result : []);
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -71,7 +78,7 @@ export default function SupportInbox() {
         body: JSON.stringify({ conversationId: selectedConvId, text: inputText })
       });
       if (res.ok) {
-        const newMessage = await res.json();
+        const newMessage = unwrapApiResponse(await res.json());
         setMessages([...messages, newMessage]);
         setInputText('');
         fetchConversations();

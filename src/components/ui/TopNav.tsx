@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../lib/ThemeContext';
 import { Tooltip } from './Tooltip';
 import { Badge } from './Badge';
+import { BranchSelector } from './BranchSelector';
 
 interface TopNavProps {
   user: any;
@@ -63,6 +64,7 @@ export const TopNav: React.FC<TopNavProps> = ({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {role === 'GENERAL_MANAGER' && <BranchSelector />}
         <div className="flex items-center bg-bg-secondary/30 p-1 rounded-2xl border border-border-subtle/20 mr-2">
            {/* Theme Toggle */}
            <button 

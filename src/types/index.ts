@@ -89,7 +89,7 @@ export interface Profile {
   full_name: string;
   phone_number?: string;
   role: RoleType;
-  location_id?: string;
+  branch_id?: string;
   district_id?: string;
   is_verified: boolean;
   is_inspector_verified: boolean;

@@ -49,7 +49,7 @@ export default function PeopleManagement() {
       if (data.success) { 
         setPeople(prev => [data.person, ...prev].map(p => p.id === data.person.id ? { ...p, locationName: branch?.name || 'Assigned' } : p));
         setShowCreate(false);
-        setForm({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: '1.0' });
+        setForm({ fullName: '', phone: '', role: 'STAFF', branchId: '', commissionTier: '1.0' });
       }
     } catch (err) {
       console.error(err);
@@ -58,7 +58,7 @@ export default function PeopleManagement() {
 
   const handleUpdate = async () => {
     if (!session || !editingPerson) return;
-    const branch = branches.find((b: any) => b.id === form.locationId);
+    const branch = branches.find((b: any) => b.id === form.branchId);
     try {
       const payload: any = {
         fullName: form.fullName,

@@ -114,7 +114,6 @@ const InventoryManager = () => {
       retail_price_etb: Number(formData.retailPrice),
       fuel: formData.fuelType,
       duty: formData.dutyStatus,
-      images: formData.gallery,
       battery_soh_percent: Number(formData.specifications?.batteryKwh) || undefined,
       plate_code: formData.plate,
       vin_chassis: formData.vin,
@@ -125,12 +124,19 @@ const InventoryManager = () => {
       drive_train: formData.specifications?.driveTrain,
       interior_color: formData.specifications?.interiorColor,
       battery_capacity_kwh: Number(formData.specifications?.batteryKwh) || undefined,
-      features: formData.specifications?.features || [],
       unit_cost: Number(formData.unitCost) || 0,
       floor_plan_loan: Boolean(formData.floorPlanLoan),
       maturity_date: formData.maturityDate || null,
       sold_date: formData.sold_date || null,
     };
+
+    if (formData.gallery && formData.gallery.length > 0) {
+      payload.images = formData.gallery;
+    }
+
+    if (formData.specifications?.features && formData.specifications.features.length > 0) {
+      payload.features = formData.specifications.features;
+    }
 
     // Only add branch_id if it's a valid UUID string and NOT a placeholder
     if (typeof formData.branchId === 'string' && isUUID(formData.branchId) && !formData.branchId.startsWith('66666666')) {

@@ -176,25 +176,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (!ok) {
-        return { error: data.message || 'Login failed' };
+        const msg = data?.message || data?.data?.message || 'Login failed';
+        return { error: msg };
       }
 
-      const role = data.profile?.role;
+      // Unwrap the standardized API response envelope if present
+      const payload = (data && typeof data === 'object' && 'success' in data && 'data' in data) ? data.data : data;
+
+      const role = payload.profile?.role;
       if (role !== 'GENERAL_MANAGER' && role !== 'DISTRICT_MANAGER' && role !== 'STAFF' && role !== 'FINANCE_AUDITOR') {
         return { error: 'ACCESS DENIED: Insufficient privilege level.' };
       }
 
       const sessionData: SessionData = {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-        expires_at: data.session.expires_at,
-        user: data.user,
-        profile: data.profile,
+        access_token: payload.session.access_token,
+        refresh_token: payload.session.refresh_token,
+        expires_at: payload.session.expires_at,
+        user: payload.user,
+        profile: payload.profile,
       };
 
       localStorage.setItem('admin_session', JSON.stringify(sessionData));
       localStorage.setItem('admin_role', role);
-      localStorage.setItem('admin_branch_id', data.profile?.branch_id || 'HQ');
+      localStorage.setItem('admin_branch_id', payload.profile?.branch_id || 'HQ');
       localStorage.removeItem('admin_selected_branch');
       setSession(sessionData);
 

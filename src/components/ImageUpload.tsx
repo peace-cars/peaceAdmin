@@ -54,7 +54,7 @@ export default function ImageUpload({
         setProgress({ current: i + 1, total: files.length });
 
         try {
-          // Convert file to Base64
+          // Convert file to Base64 with compression check
           const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(f);
@@ -62,6 +62,15 @@ export default function ImageUpload({
             reader.onerror = error => reject(error);
           });
           const base64Data = await toBase64(file);
+          
+          // Warn if base64 exceeds size limits
+          const base64SizeBytes = base64Data.length;
+          if (base64SizeBytes > MAX_FILE_SIZE) {
+            console.warn(`[Upload Warning] ${file.name}: Base64 size ${(base64SizeBytes / 1024 / 1024).toFixed(2)}MB exceeds 10MB limit`);
+            throw new Error(`File too large after encoding: ${(base64SizeBytes / 1024 / 1024).toFixed(2)}MB. Compress before uploading.`);
+          }
+
+          console.log(`[Upload] ${file.name}: Original ${(file.size / 1024 / 1024).toFixed(2)}MB → Base64 ${(base64SizeBytes / 1024 / 1024).toFixed(2)}MB`);
 
           const response = await api.post<{ url: string; success: boolean }>('/storage/upload-base64', {
             base64: base64Data,
@@ -86,7 +95,8 @@ export default function ImageUpload({
             });
           }
         } catch (fileError: any) {
-          console.error(`[Upload Error] ${file.name}:`, fileError);
+          const errorMsg = fileError?.message || fileError?.toString() || 'Unknown error';
+          console.error(`[Upload Error] ${file.name}:`, errorMsg, fileError);
           failed.push(file);
         }
       }

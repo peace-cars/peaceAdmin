@@ -106,6 +106,13 @@ const InventoryManager = () => {
     // Helper to validate UUID format
     const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
+    // Helper: safely coerce to number, returns undefined for empty/NaN
+    const toNum = (val: any): number | undefined => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      const n = Number(val);
+      return isNaN(n) ? undefined : n;
+    };
+
     // Map frontend camelCase to backend snake_case DTO
     const payload: any = {
       make: formData.make,
@@ -114,28 +121,36 @@ const InventoryManager = () => {
       retail_price_etb: Number(formData.retailPrice),
       fuel: formData.fuelType,
       duty: formData.dutyStatus,
-      battery_soh_percent: Number(formData.specifications?.batteryKwh) || undefined,
+      battery_soh_percent: toNum(formData.specifications?.batteryKwh),
       plate_code: formData.plate,
       vin_chassis: formData.vin,
       status: formData.status,
-      certified_km: Number(formData.certifiedKm) || undefined,
-      range_km: Number(formData.specifications?.range) || undefined,
-      motor_power_kw: Number(formData.specifications?.motorPower) || undefined,
+      certified_km: toNum(formData.certifiedKm),
+      range_km: toNum(formData.specifications?.range),
+      motor_power_kw: toNum(formData.specifications?.motorPower),
       drive_train: formData.specifications?.driveTrain,
       interior_color: formData.specifications?.interiorColor,
-      battery_capacity_kwh: Number(formData.specifications?.batteryKwh) || undefined,
-      unit_cost: Number(formData.unitCost) || 0,
-      floor_plan_loan: Boolean(formData.floorPlanLoan),
+      battery_capacity_kwh: toNum(formData.specifications?.batteryKwh),
+      unit_cost: toNum(formData.unitCost) ?? 0,
+      floor_plan_loan: formData.floorPlanLoan ? 1 : 0,
       maturity_date: formData.maturityDate || null,
       sold_date: formData.sold_date || null,
     };
 
-    if (formData.gallery && formData.gallery.length > 0) {
-      payload.images = formData.gallery;
+    // Sanitize gallery: ensure only valid URL strings are sent as images
+    if (Array.isArray(formData.gallery) && formData.gallery.length > 0) {
+      const validImages = formData.gallery.filter(
+        (url: any) => typeof url === 'string' && url.trim().length > 0
+      );
+      if (validImages.length > 0) {
+        payload.images = validImages;
+      }
     }
 
     if (formData.specifications?.features && formData.specifications.features.length > 0) {
-      payload.features = formData.specifications.features;
+      payload.features = formData.specifications.features.filter(
+        (f: any) => typeof f === 'string' && f.trim().length > 0
+      );
     }
 
     // Only add branch_id if it's a valid UUID string and NOT a placeholder

@@ -155,7 +155,7 @@ export default function CustomOrders() {
   return (
     <div className="animate-fade-in relative min-h-screen">
       {/* Sticky Header */}
-      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-3 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/50 flex flex-col gap-3 mb-4 shadow-sm">
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-3 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/50 flex flex-col gap-3 mb-4 shadow-sm overflow-x-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary-main/10 border border-primary-main/20 flex items-center justify-center">

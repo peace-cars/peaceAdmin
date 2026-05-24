@@ -54,12 +54,12 @@ const SoldArchive = () => {
         subtitle="Historical ledger of sold vehicles with true unit cost and profit margin analytics."
         icon={<DollarSign size={18} className="text-primary-main" />}
         actions={
-          <div className="relative group">
+          <div className="relative group w-full md:w-auto">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/40 group-focus-within:text-primary-main transition-colors" size={16} />
             <input 
               type="text" 
               placeholder="Search archive..." 
-              className="bg-bg-secondary border border-border-subtle/30 rounded-2xl py-3.5 pl-12 pr-6 text-[13px] font-medium text-text-main focus:outline-none focus:border-primary-main/30 transition-all w-72 shadow-sm placeholder:text-text-muted/30" 
+              className="bg-bg-secondary border border-border-subtle/30 rounded-2xl py-3.5 pl-12 pr-6 text-[13px] font-medium text-text-main focus:outline-none focus:border-primary-main/30 transition-all w-full md:w-72 shadow-sm placeholder:text-text-muted/30" 
             />
           </div>
         }

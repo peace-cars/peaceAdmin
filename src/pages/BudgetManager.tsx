@@ -72,13 +72,13 @@ export default function BudgetManager() {
 
   return (
     <div className="space-y-8 pb-12">
-      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm">
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm overflow-x-hidden">
         <PageHeader 
           title="Finance Requests" 
           subtitle="Review and approve operational budget requests from branch staff."
           icon={<Calculator size={24} />}
           actions={
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
                <Button variant="outline" size="sm" onClick={() => fetchBudgets()} className="rounded-xl h-10 px-6 font-bold text-[11px] uppercase tracking-wider border-border-subtle">Refresh Data</Button>
                <Button variant="primary" size="sm" className="rounded-xl h-10 px-6 font-bold text-[11px] uppercase tracking-wider">Export Report</Button>
             </div>

@@ -145,7 +145,7 @@ export default function PeopleManagement() {
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm">
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm overflow-x-hidden">
         <PageHeader 
           title="Personnel Registry" 
           subtitle="Operational oversight of administrative and showroom personnel."

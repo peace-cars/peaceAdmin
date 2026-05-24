@@ -187,15 +187,15 @@ export default function BranchRoster() {
         subtitle="Operational oversight of regional personnel."
         icon={<Users size={18} className="text-primary-main" />}
         actions={
-          <div className="flex items-center gap-3">
-             <div className="relative group">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
+             <div className="relative group flex-1 md:flex-none">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/30" size={14} />
                 <input 
                   type="text" 
                   placeholder="Filter personnel..." 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="bg-bg-secondary border border-border-subtle rounded-xl py-2.5 pl-11 pr-6 text-[13px] font-medium text-text-main focus:outline-none focus:border-primary-main/30 transition-all w-64 shadow-sm" 
+                  className="bg-bg-secondary border border-border-subtle rounded-xl py-2.5 pl-11 pr-6 text-[13px] font-medium text-text-main focus:outline-none focus:border-primary-main/30 transition-all w-full md:w-64 shadow-sm" 
                 />
              </div>
              <Button 
@@ -205,7 +205,7 @@ export default function BranchRoster() {
                  setFormData({ fullName: '', phone: '', role: 'STAFF', locationId: '', commissionTier: 1.0, date_of_birth: '' });
                  setIsHiring(true);
                }} 
-               className="rounded-xl h-11 px-6 bg-primary-main text-[#FFFFFF] font-bold text-[12px] shadow-xl active:brightness-90 transition-all"
+               className="rounded-xl h-11 px-6 bg-primary-main text-[#FFFFFF] font-bold text-[12px] shadow-xl active:brightness-90 transition-all w-full md:w-auto"
              >
                 Onboard Personnel
              </Button>

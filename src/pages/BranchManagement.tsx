@@ -168,7 +168,7 @@ export default function BranchManagement() {
         actions={
           role === 'GENERAL_MANAGER' ? (
             <Button variant="primary" size="sm" onClick={() => setShowCreate(true)}
-              className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all">
+              className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all w-full md:w-auto">
               <Plus size={14} className="mr-2" /> New Branch
             </Button>
           ) : null

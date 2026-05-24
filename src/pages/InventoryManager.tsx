@@ -205,13 +205,19 @@ const InventoryManager = () => {
   return (
     <div className="space-y-10 pb-20 animate-fade-in">
       <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm">
-        <PageHeader 
-          title="Asset Registry" 
-          subtitle="Consolidated management of regional vehicle inventory and technical archives."
-          icon={<LayoutGrid size={18} className="text-primary-main" />}
-          actions={
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-6 w-full min-w-0">
-               <div className="relative group flex-1">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="text-primary-main shrink-0">
+              <LayoutGrid size={24} strokeWidth={2} />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold text-text-main tracking-tight">Asset Registry</h1>
+              <p className="text-[13px] text-text-muted leading-relaxed">Consolidated management of regional vehicle inventory and technical archives.</p>
+            </div>
+          </div>
+          <div className="w-full md:w-auto shrink-0 overflow-x-auto no-scrollbar pb-1 -mb-1">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3 w-full md:w-auto">
+               <div className="relative group flex-1 md:flex-none md:w-64">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/30 group-focus-within:text-primary-main transition-colors" size={16} />
                   <input 
                     type="text" 
@@ -221,13 +227,12 @@ const InventoryManager = () => {
                     className="bg-bg-secondary border border-border-subtle/30 rounded-2xl py-3.5 pl-12 pr-6 text-[13px] font-bold text-text-main focus:outline-none focus:border-primary-main/30 focus:ring-4 focus:ring-primary-main/5 transition-all w-full shadow-sm placeholder:text-text-muted/30" 
                   />
                </div>
-               <Button variant="primary" className="h-12 px-8 shadow-lg shadow-primary-main/20 shrink-0 w-full sm:w-auto" onClick={() => { setEditingId(null); resetForm(); setIsAdding(true); }}>
+               <Button variant="primary" className="h-12 px-6 md:px-8 shadow-lg shadow-primary-main/20 shrink-0 w-full md:w-auto text-sm md:text-base font-bold whitespace-nowrap" onClick={() => { setEditingId(null); setIsAdding(true); }}>
                   <Plus size={16} className="mr-2" /> Register Asset
                </Button>
             </div>
-          }
-          className="pb-0"
-        />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
@@ -454,7 +459,7 @@ const InventoryManager = () => {
 
       <Modal
         isOpen={isAdding}
-        onClose={() => setIsAdding(false)}
+        onClose={() => { resetForm(); setIsAdding(false); }}
         title={editingId ? 'Edit Asset Registry' : 'New Asset Registration'}
         subtitle="Regional vehicle inventory and technical archives."
         maxWidth="max-w-4xl"

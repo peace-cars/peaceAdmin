@@ -14,7 +14,7 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       <div
         ref={ref}
         className={cn(
-          'hidden md:flex flex-col gap-4 mb-6',
+          'flex flex-col gap-4 mb-6',
           className
         )}
         {...props}

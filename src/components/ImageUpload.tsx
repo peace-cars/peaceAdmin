@@ -3,6 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, CheckCircle2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { cn } from '../lib/utils';
+import { api } from '../lib/api';
 
 interface ImageUploadProps {
   onUploadComplete: (urls: string[]) => void;
@@ -62,34 +63,27 @@ export default function ImageUpload({
           });
           const base64Data = await toBase64(file);
 
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/storage/upload-base64`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              base64: base64Data,
-              filename: file.name,
-              bucket: bucket,
-              folder: folder
-            })
+          const response = await api.post<{ url: string; success: boolean }>('/storage/upload-base64', {
+            base64: base64Data,
+            filename: file.name,
+            bucket: bucket,
+            folder: folder
           });
 
-          if (!response.ok) {
-            let errorMsg = `Upload failed (HTTP ${response.status})`;
-            try {
-              const errorData = await response.json();
-              errorMsg = errorData.message || errorMsg;
-            } catch {}
-            throw new Error(errorMsg);
+          const url = response.url;
+          
+          if (!url || typeof url !== 'string') {
+            throw new Error(`Invalid URL in response: ${JSON.stringify(url)}`);
           }
-
-          const { url } = await response.json();
+          
           uploadedUrls.push(url);
           
           if (file.type.startsWith('image/')) {
-            setPreviews(prev => [...prev, url]);
+            setPreviews(prev => {
+              const updated = [...prev, url];
+              console.log('[Upload] Updated previews:', updated);
+              return updated;
+            });
           }
         } catch (fileError: any) {
           console.error(`[Upload Error] ${file.name}:`, fileError);
@@ -98,7 +92,17 @@ export default function ImageUpload({
       }
 
       if (uploadedUrls.length > 0) {
-        onUploadComplete(uploadedUrls);
+        // Validate URLs before calling completion callback
+        const validUrls = uploadedUrls.filter(url => {
+          const isValid = typeof url === 'string' && (url.startsWith('http') || url.startsWith('blob:'));
+          if (!isValid) console.warn('[Upload] Invalid URL:', url);
+          return isValid;
+        });
+        if (validUrls.length > 0) {
+          onUploadComplete(validUrls);
+        } else {
+          setError('Upload completed but generated invalid URLs. Please try again.');
+        }
       }
 
       if (failed.length > 0) {

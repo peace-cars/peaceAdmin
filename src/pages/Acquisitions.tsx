@@ -196,7 +196,7 @@ const Acquisitions = () => {
 
   return (
     <div className="animate-fade-in relative min-h-screen">
-      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-3 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/50 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 shadow-sm">
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-3 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/50 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 mb-4 shadow-sm overflow-x-hidden">
          <div className="flex bg-bg-secondary p-1 rounded-xl overflow-x-auto no-scrollbar w-full md:w-auto">
             {columns.map(col => (
               <button 

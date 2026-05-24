@@ -69,9 +69,9 @@ export default function CommissionApproval() {
         subtitle="Verification and settlement of performance rewards."
         icon={<DollarSign size={18} className="text-primary-main" />}
         actions={
-          <div className="flex items-center gap-4">
-             <Button variant="outline" className="h-11 px-6 shadow-sm" onClick={() => fetchCommissions()}>Refresh Registry</Button>
-             <Button variant="primary" className="h-11 px-6 shadow-lg shadow-primary-main/20">Download Ledger</Button>
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full md:w-auto">
+             <Button variant="outline" className="h-11 px-6 shadow-sm text-[12px] font-bold" onClick={() => fetchCommissions()}>Refresh Registry</Button>
+             <Button variant="primary" className="h-11 px-6 shadow-lg shadow-primary-main/20 text-[12px] font-bold">Download Ledger</Button>
           </div>
         }
         className="pb-8 border-b border-border-subtle/30"

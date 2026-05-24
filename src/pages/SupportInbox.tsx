@@ -105,7 +105,7 @@ export default function SupportInbox() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col gap-6">
-      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm shrink-0">
+      <div className="sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 px-4 md:px-8 py-4 bg-bg-base/95 backdrop-blur-md border-b border-border-subtle/30 shadow-sm shrink-0 overflow-x-hidden">
         <PageHeader 
           title="Support Inbox" 
           subtitle="Manage customer conversations and vehicle inquiries."

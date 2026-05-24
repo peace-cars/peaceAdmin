@@ -48,7 +48,7 @@ export default function StaffReports() {
         subtitle="Efficiency indexing, compensation audits, and regional productivity analytics."
         icon={<BarChart3 size={18} className="text-primary-main" />}
         actions={
-           <Button variant="primary" className="rounded-xl h-11 px-6 font-bold text-[12px] shadow-xl bg-text-main text-bg active:scale-95 transition-all">Generate Audit</Button>
+           <Button variant="primary" className="rounded-xl h-11 px-6 font-bold text-[12px] shadow-xl bg-text-main text-bg active:scale-95 transition-all w-full md:w-auto">Generate Audit</Button>
         }
         className="pb-6 border-b border-border-subtle/30"
       />

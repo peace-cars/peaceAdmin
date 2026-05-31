@@ -20,7 +20,7 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
         {...props}
       >
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3">
             {icon && (
               <div className="text-primary-main shrink-0">
                 {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 2 } as any)}

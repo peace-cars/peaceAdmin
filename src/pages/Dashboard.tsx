@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
-import { PageHeader } from "../components/ui/PageHeader";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Tooltip } from "../components/ui/Tooltip";
@@ -356,6 +355,7 @@ export default function Dashboard() {
               dmBranches={dmBranches}
               role={role}
               loadingMetrics={loadingMetrics}
+              selectedBranchId={selectedBranch}
               activeQueueTab={'Authorization Pending'}
               onAssignTask={assignTaskToStaff}
               onApprove={handleApproveLead}

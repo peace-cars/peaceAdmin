@@ -90,6 +90,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setSession(null);
             }
           } else {
+            // Validate local storage role against session to prevent tampering
+            const storedRole = localStorage.getItem('admin_role');
+            const sessionRole = parsed.profile?.role;
+            if (storedRole !== sessionRole) {
+              console.warn('[Admin Auth] Role mismatch detected. Syncing from session...');
+              localStorage.setItem('admin_role', sessionRole || 'USER');
+            }
+
             setSession(parsed);
             await supabase.auth.setSession({
               access_token: parsed.access_token,

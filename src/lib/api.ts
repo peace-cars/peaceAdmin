@@ -43,28 +43,31 @@ function setCachedData(key: string, data: any) {
 export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<T> {
   const method = options.method || 'GET';
   const isCacheable = method === 'GET';
+  const sessionStr = localStorage.getItem('admin_session');
+  let token = null;
+  let userRole = null;
+  
+  if (sessionStr) {
+    try {
+      const session = JSON.parse(sessionStr);
+      token = session.access_token;
+      // Role is stored under profile, not user
+      userRole = session.profile?.role || session.user?.role || session.role;
+    } catch (e) {
+      console.error('[API] Failed to parse session', e);
+    }
+  }
+
   let finalEndpoint = endpoint;
   if (method === 'GET') {
     const selectedBranch = localStorage.getItem('admin_selected_branch');
-    if (selectedBranch && selectedBranch !== 'all') {
+    if (selectedBranch && selectedBranch !== 'all' && (userRole === 'ADMIN' || userRole === 'DISTRICT_MANAGER' || userRole === 'GENERAL_MANAGER' || userRole === 'FINANCE_AUDITOR')) {
       const separator = finalEndpoint.includes('?') ? '&' : '?';
       finalEndpoint = `${finalEndpoint}${separator}branchId=${selectedBranch}`;
     }
   }
   const cacheKey = btoa(finalEndpoint); // Branch-aware cache key
   const url = `${API_URL}${finalEndpoint.startsWith('/') ? finalEndpoint : `/${finalEndpoint}`}`;
-  
-  const sessionStr = localStorage.getItem('admin_session');
-  let token = null;
-  
-  if (sessionStr) {
-    try {
-      const session = JSON.parse(sessionStr);
-      token = session.access_token;
-    } catch (e) {
-      console.error('[API] Failed to parse session', e);
-    }
-  }
 
   const headers = {
     'Content-Type': 'application/json',
@@ -83,7 +86,7 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
         headers,
         data: options.body ? JSON.parse(options.body) : undefined,
         connectTimeout: 8000,
-        readTimeout: 8000,
+        readTimeout: 30000, // 30s timeout
       });
 
       if (response.status >= 400) {
@@ -92,12 +95,25 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
       rawData = response.data;
     } else {
       // Fallback for Web/PWA
-      const response = await fetch(url, { ...options, headers });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'API request failed' }));
-        throw new Error(error.message || 'API request failed');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
+      try {
+        const response = await fetch(url, { ...options, headers, signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ message: 'API request failed' }));
+          throw new Error(error.message || 'API request failed');
+        }
+        rawData = await response.json();
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          throw new Error('Request timed out after 30 seconds');
+        }
+        throw err;
       }
-      rawData = await response.json();
     }
 
     // Safely unwrap standard enterprise response wrapper if present
@@ -108,27 +124,38 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
     return rawData;
   };
 
-  try {
-    const result = await executeRequest();
-    
-    // Success: Update cache if it's a GET request
-    if (isCacheable) {
-      setCachedData(cacheKey, result);
-    }
-    
-    return result;
-  } catch (error) {
-    // Failure: Try to return cached data for GET requests
-    if (isCacheable) {
-      const cached = await getCachedData(cacheKey);
-      if (cached) {
-        console.warn(`[API] Serving offline cache for ${endpoint}`);
-        return cached;
+  let retries = isCacheable ? 1 : 0;
+  
+  while (true) {
+    try {
+      const result = await executeRequest();
+      
+      // Success: Update cache if it's a GET request
+      if (isCacheable) {
+        setCachedData(cacheKey, result);
       }
+      
+      return result;
+    } catch (error) {
+      if (retries > 0) {
+        retries--;
+        console.warn(`[API] Retrying ${endpoint}...`);
+        await new Promise(r => setTimeout(r, 2000)); // 2s delay
+        continue;
+      }
+
+      // Failure: Try to return cached data for GET requests
+      if (isCacheable) {
+        const cached = await getCachedData(cacheKey);
+        if (cached) {
+          console.warn(`[API] Serving offline cache for ${endpoint}`);
+          return cached;
+        }
+      }
+      
+      console.error('[API] Fatal Error:', error);
+      throw error;
     }
-    
-    console.error('[API] Fatal Error:', error);
-    throw error;
   }
 }
 

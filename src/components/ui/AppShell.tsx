@@ -95,8 +95,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         />
 
         {showBackButton && (
-          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-[95] border-b border-border-subtle/30 bg-surface-card/90 backdrop-blur-xl shadow-sm">
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 flex items-center gap-3">
+          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-[95] bg-surface-card/90 backdrop-blur-xl">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-2 flex items-center">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
@@ -105,7 +105,6 @@ export const AppShell: React.FC<AppShellProps> = ({
                 <ArrowLeft size={16} />
                 Back
               </button>
-              <span className="text-sm text-text-muted">Return to the previous page</span>
             </div>
           </div>
         )}

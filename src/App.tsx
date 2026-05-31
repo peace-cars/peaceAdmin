@@ -19,6 +19,7 @@ const AssetLibrary = lazy(() => import('./pages/AssetLibrary'));
 const SupportInbox = lazy(() => import('./pages/SupportInbox'));
 const Login = lazy(() => import('./pages/Login'));
 const SoldArchive = lazy(() => import('./pages/SoldArchive'));
+const SoldArchiveDetail = lazy(() => import('./pages/SoldArchiveDetail'));
 const CustomOrders = lazy(() => import('./pages/CustomOrders'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const FinanceManager = lazy(() => import('./pages/FinanceManager'));
@@ -162,6 +163,7 @@ function App() {
           <Route path="/finance" element={<ProtectedRoute><FinanceManager /></ProtectedRoute>} />
           <Route path="/library" element={<ProtectedRoute><AssetLibrary /></ProtectedRoute>} />
           <Route path="/archive" element={<ProtectedRoute><SoldArchive /></ProtectedRoute>} />
+          <Route path="/archive/:id" element={<ProtectedRoute><SoldArchiveDetail /></ProtectedRoute>} />
           <Route path="/custom-orders" element={<ProtectedRoute><CustomOrders /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         </Routes>

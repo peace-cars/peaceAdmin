@@ -22,7 +22,6 @@ import {
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
 import { useTranslation } from 'react-i18next';
-import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';

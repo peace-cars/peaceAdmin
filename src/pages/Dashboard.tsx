@@ -346,7 +346,6 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* DM Leads Management */}
             <DistrictManagerView 
               tradeIns={tradeIns}
               showroomCount={showroomCount}
@@ -363,6 +362,8 @@ export default function Dashboard() {
               onViewReport={(lead) => setSelectedReport(lead)}
               onEscalate={escalateToGM}
             />
+
+            <div className="my-10 border-t border-border-subtle/30" />
 
             {/* Quick Links */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

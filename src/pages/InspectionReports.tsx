@@ -108,8 +108,6 @@ export default function InspectionReports() {
 
   return (
     <div className="space-y-8 pb-20">
-
-
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-surface-card border border-border-subtle/50 rounded-2xl p-5 flex items-center gap-4">

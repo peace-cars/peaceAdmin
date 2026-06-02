@@ -153,8 +153,6 @@ export default function SupportInbox() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex flex-col gap-6">
-      
-
       <div className="flex-1 bg-surface-card border border-border-subtle/30 rounded-2xl overflow-hidden flex shadow-sm min-h-0 relative">
         {/* Conversation List */}
         <div

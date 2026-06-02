@@ -18,16 +18,16 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export const AppShell: React.FC<AppShellProps> = ({ 
-  user, 
-  role, 
-  notifications, 
-  showNotifs, 
+export const AppShell: React.FC<AppShellProps> = ({
+  user,
+  role,
+  notifications,
+  showNotifs,
   scope,
-  onToggleNotifs, 
-  onMarkAllRead, 
-  onLogout, 
-  children 
+  onToggleNotifs,
+  onMarkAllRead,
+  onLogout,
+  children,
 }) => {
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -35,7 +35,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   const location = useLocation();
   const contentRef = useRef<HTMLElement>(null);
 
-  const showBackButton = location.pathname !== '/' && location.pathname !== '/login' && location.pathname !== '/signup';
+  const showBackButton =
+    location.pathname !== '/' && location.pathname !== '/login' && location.pathname !== '/signup';
 
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, left: 0 });
@@ -55,7 +56,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     <div className="flex h-screen bg-bg-base text-text-main font-sans overflow-hidden">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/40 z-[150] lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
@@ -68,11 +69,17 @@ export const AppShell: React.FC<AppShellProps> = ({
         transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
         className="fixed inset-y-0 left-0 w-[280px] bg-bg-sidebar z-[160] lg:hidden shadow-2xl"
       >
-        <SideNav role={role} onLogout={onLogout} isCollapsed={false} scope={scope} onNavigate={() => setIsMobileMenuOpen(false)} />
+        <SideNav
+          role={role}
+          onLogout={onLogout}
+          isCollapsed={false}
+          scope={scope}
+          onNavigate={() => setIsMobileMenuOpen(false)}
+        />
       </motion.div>
 
       {/* Desktop SideNav */}
-      <motion.div 
+      <motion.div
         initial={false}
         animate={{ width: isCollapsed ? 80 : 260 }}
         transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
@@ -83,14 +90,14 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       {/* Main Content */}
       <main className="flex-grow flex flex-col h-full overflow-hidden relative">
-        <TopNav 
-          user={user} 
-          role={role} 
-          notifications={notifications} 
-          showNotifs={showNotifs} 
+        <TopNav
+          user={user}
+          role={role}
+          notifications={notifications}
+          showNotifs={showNotifs}
           scope={scope}
-          onToggleNotifs={onToggleNotifs} 
-          onMarkAllRead={onMarkAllRead} 
+          onToggleNotifs={onToggleNotifs}
+          onMarkAllRead={onMarkAllRead}
           onToggleSidebar={handleToggleSidebar}
         />
 
@@ -110,8 +117,13 @@ export const AppShell: React.FC<AppShellProps> = ({
         )}
 
         {/* Scrollable Content */}
-        <section ref={contentRef} tabIndex={-1} className="flex-grow overflow-y-auto no-scrollbar scroll-smooth" onClick={() => setIsMobileMenuOpen(false)}>
-          <motion.div 
+        <section
+          ref={contentRef}
+          tabIndex={-1}
+          className="flex-grow overflow-y-auto no-scrollbar scroll-smooth"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
@@ -119,7 +131,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           >
             {children}
           </motion.div>
-          
+
           {/* Bottom spacer for BottomNav */}
           <div className="h-28 lg:h-8" />
         </section>

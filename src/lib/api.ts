@@ -1,10 +1,16 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  const isNative = Capacitor.isNativePlatform();
-  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  return (isLocalhost && !isNative) ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
+  let base = import.meta.env.VITE_API_URL;
+  if (!base) {
+    const isNative = Capacitor.isNativePlatform();
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    base = (isLocalhost && !isNative) ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
+  }
+  if (!base.endsWith('/api/v1')) {
+    base = base.replace(/\/+$/, '') + '/api/v1';
+  }
+  return base;
 };
 
 export const API_URL = getApiUrl();

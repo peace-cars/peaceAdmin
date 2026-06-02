@@ -102,7 +102,6 @@ export default function BudgetManager() {
 
   return (
     <div className="space-y-8 pb-12">
-
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiTile
           label="Pending Review"

@@ -1,42 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 export const PwaInstallPrompt = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const { isInstallable, installApp } = usePwaInstall();
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      // Wait a few seconds before showing to not overwhelm the user immediately
-      setTimeout(() => setShowPrompt(true), 3000);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (isInstallable) {
+      const timer = setTimeout(() => setShowPrompt(true), 3000);
+      return () => clearTimeout(timer);
+    } else {
       setShowPrompt(false);
     }
-
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-  }, []);
+  }, [isInstallable]);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-    } else {
-      console.log('User dismissed the install prompt');
-    }
-    
-    setDeferredPrompt(null);
+    await installApp();
     setShowPrompt(false);
   };
 

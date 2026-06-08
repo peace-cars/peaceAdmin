@@ -21,9 +21,11 @@ import {
   Moon,
   Sun,
   Globe,
+  Download,
 } from 'lucide-react';
 import { useTheme } from '../../lib/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { usePwaInstall } from '../../../hooks/usePwaInstall';
 
 import logo from '../../assets/logo.png';
 
@@ -45,6 +47,7 @@ export const SideNav: React.FC<SideNavProps> = ({
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { i18n } = useTranslation();
+  const { isInstallable, installApp } = usePwaInstall();
   const roleLabel = role?.replace(/_/g, ' ') || 'Manager';
 
   const isActive = (path: string) => location.pathname === path;
@@ -241,6 +244,22 @@ export const SideNav: React.FC<SideNavProps> = ({
           >
             <Globe size={18} />
             <span className="text-[11px] font-medium uppercase">{i18n.language}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Install App */}
+      {isInstallable && (
+        <div className={clsx('pb-3 pt-2', isCollapsed ? 'px-0' : 'px-2')}>
+          <button
+            onClick={installApp}
+            className={clsx(
+              'flex items-center gap-2.5 bg-primary-main/10 rounded-xl text-[14px] font-bold text-primary-main hover:bg-primary-main/20 transition-all border border-primary-main/20 active:scale-[0.97]',
+              isCollapsed ? 'justify-center p-3' : 'w-full p-3',
+            )}
+          >
+            <Download size={18} />
+            {!isCollapsed && <span>Install App</span>}
           </button>
         </div>
       )}

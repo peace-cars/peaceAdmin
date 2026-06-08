@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { UserPlus, MapPin, Power, X, Users, ShieldCheck, Zap, Building2, Edit } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../lib/auth';
-import { unwrapApiResponse } from '../lib/api';
+import { api } from '../lib/api';
+import { fetchWithCache } from '../lib/cache';
 import { KpiTile } from '../components/ui/KpiTile';
 import { SectionCard } from '../components/ui/SectionCard';
 import { Button } from '../components/ui/Button';
@@ -25,51 +26,34 @@ export default function PeopleManagement() {
 
   useEffect(() => {
     if (!session) return;
-    const headers = { Authorization: `Bearer ${session.access_token}` };
+    
+    fetchWithCache('/people', {}, (data) => {
+      if (Array.isArray(data)) setPeople(data);
+      else setPeople([]);
+    }).catch(err => {
+      console.error(err);
+      setPeople([]);
+    });
 
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people`, { headers })
-      .then((r) => r.json())
-      .then((data) => {
-        const result = unwrapApiResponse(data);
-        if (Array.isArray(result)) setPeople(result);
-        else setPeople([]);
-      })
-      .catch((err) => {
-        console.error(err);
-        setPeople([]);
-      });
-
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/locations`, { headers })
-      .then((r) => r.json())
-      .then((data) => {
-        const result = unwrapApiResponse(data);
-        if (Array.isArray(result)) setBranches(result);
-        else setBranches([]);
-      })
-      .catch((err) => {
-        console.error(err);
-        setBranches([]);
-      });
+    fetchWithCache('/locations', {}, (data) => {
+      if (Array.isArray(data)) setBranches(data);
+      else setBranches([]);
+    }).catch(err => {
+      console.error(err);
+      setBranches([]);
+    });
   }, [session]);
 
   const handleCreate = async () => {
     if (!session) return;
     const branch = branches.find((b: any) => b.id === form.branchId);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          ...form,
-          locationName: branch?.name || '',
-          commissionTier: Number(form.commissionTier),
-        }),
+      const data: any = await api.post('/people', {
+        ...form,
+        locationName: branch?.name || '',
+        commissionTier: Number(form.commissionTier),
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.person) {
         setPeople((prev) =>
           [data.person, ...prev].map((p) =>
             p.id === data.person.id ? { ...p, locationName: branch?.name || 'Assigned' } : p,
@@ -98,45 +82,26 @@ export default function PeopleManagement() {
         payload.branchId = form.branchId;
       }
 
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people/${editingPerson.id}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(payload),
-        },
+      await api.patch(`/people/${editingPerson.id}`, payload);
+      
+      setPeople((prev) =>
+        prev.map((p) =>
+          p.id === editingPerson.id
+            ? {
+                ...p,
+                fullName: form.fullName,
+                phone: form.phone,
+                role: form.role,
+                branchId: form.branchId,
+                locationName: branch?.name || 'Updated',
+                commissionTier: Number(form.commissionTier),
+              }
+            : p,
+        ),
       );
-
-      if (!res.ok) {
-        const errData = await res.json();
-        console.error('[DIAGNOSTIC] Validation Failure:', errData);
-        return;
-      }
-
-      const data = await res.json();
-      if (data.success) {
-        setPeople((prev) =>
-          prev.map((p) =>
-            p.id === editingPerson.id
-              ? {
-                  ...p,
-                  fullName: form.fullName,
-                  phone: form.phone,
-                  role: form.role,
-                  branchId: form.branchId,
-                  locationName: branch?.name || 'Updated',
-                  commissionTier: Number(form.commissionTier),
-                }
-              : p,
-          ),
-        );
-        setShowCreate(false);
-        setEditingPerson(null);
-        setForm({ fullName: '', phone: '', role: 'STAFF', branchId: '', commissionTier: '1.0' });
-      }
+      setShowCreate(false);
+      setEditingPerson(null);
+      setForm({ fullName: '', phone: '', role: 'STAFF', branchId: '', commissionTier: '1.0' });
     } catch (err) {
       console.error(err);
     }
@@ -157,15 +122,8 @@ export default function PeopleManagement() {
   const toggleActive = async (id: string) => {
     if (!session) return;
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/people/${id}/toggle`,
-        {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        },
-      );
-      const data = await res.json();
-      if (data.success) {
+      const data: any = await api.patch(`/people/${id}/toggle`, {});
+      if (data && typeof data.isActive !== 'undefined') {
         setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, isActive: data.isActive } : p)));
       }
     } catch (err) {
@@ -225,75 +183,84 @@ export default function PeopleManagement() {
         />
       </div>
 
-      <div className="bg-surface-card rounded-xl border border-border-subtle/30 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-border-subtle/30 bg-bg-secondary/50 flex items-center justify-between">
-          <h2 className="text-[12px] font-bold text-text-muted font-medium">Active Personnel</h2>
+      {/* Native Solid Personnel Grid/List */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-[14px] font-black text-text-main">Active Personnel</h2>
+          <span className="text-[12px] font-bold text-text-muted bg-bg-secondary px-2 py-1 rounded-md">{people.length} Members</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-[11px] font-bold text-text-muted font-medium border-b border-border-subtle/30 bg-bg-secondary/50">
-                <th className="px-5 py-3 font-bold">Personnel Entity</th>
-                <th className="px-5 py-3 font-bold">Assigned Role</th>
-                <th className="px-5 py-3 font-bold">Registry Hub</th>
-                <th className="px-5 py-3 font-bold">Tier Index</th>
-                <th className="px-5 py-3 font-bold text-right">Operations</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-subtle/30">
-              {people.map((p) => (
-                <tr
-                  key={p.id}
-                  className={cn(
-                    'group transition-all hover:bg-bg-secondary/40',
-                    !p.isActive && 'opacity-60 bg-bg-secondary/20 grayscale border-dashed',
-                  )}
-                >
-                  <td className="px-5 py-3">
-                    <p className="text-sm font-bold text-text-main group-hover:text-primary-main transition-colors leading-tight">
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {people.map((p) => (
+            <div
+              key={p.id}
+              className={cn(
+                'bg-surface-card rounded-2xl border border-border-subtle shadow-sm overflow-hidden flex flex-col transition-transform active:scale-[0.98]',
+                !p.isActive && 'opacity-60 grayscale border-dashed bg-bg-secondary/50'
+              )}
+            >
+              {/* Card Header area */}
+              <div className="p-4 flex items-start justify-between border-b border-border-subtle bg-bg-secondary/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-bg-base border-2 border-border-subtle flex items-center justify-center shrink-0 shadow-inner">
+                    <UserPlus size={20} className="text-text-muted" />
+                  </div>
+                  <div>
+                    <h3 className="text-[15px] font-black text-text-main leading-tight tracking-tight">
                       {p.fullName}
+                    </h3>
+                    <p className="text-[10px] text-text-muted font-mono mt-0.5 uppercase">
+                      ID: {p.id.substring(0, 6)}
                     </p>
-                    <p className="text-[7px] text-text-muted font-medium mt-0.5 font-mono">
-                      ID: {p.id.substring(0, 8).toUpperCase()}
-                    </p>
-                  </td>
-                  <td className="px-5 py-3">{roleBadge(p.role)}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2 text-[12px] font-bold text-text-muted/60">
-                      <MapPin size={10} className="text-primary-main/60" />
-                      {p.locationName || 'Unassigned'}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="text-[13px] font-bold text-text-main font-mono">
-                      {p.commissionTier} <span className="text-[11px] text-primary-main">x</span>
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                      <button
-                        className="w-8 h-8 flex items-center justify-center bg-bg-secondary rounded-lg text-text-muted/60 hover:text-primary-main border border-border-subtle/30 shadow-sm transition-all active:scale-90"
-                        onClick={() => openEdit(p)}
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        className={cn(
-                          'w-8 h-8 flex items-center justify-center rounded-lg transition-all shadow-sm border border-border-subtle/30 active:scale-90',
-                          p.isActive
-                            ? 'bg-bg-secondary text-text-muted/60 hover:text-error-main'
-                            : 'bg-success/10 text-success border-success/20',
-                        )}
-                        onClick={() => toggleActive(p.id)}
-                      >
-                        <Power size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Body */}
+              <div className="p-4 flex flex-col gap-3 flex-1 bg-surface-card">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Role</span>
+                  {roleBadge(p.role)}
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Hub</span>
+                  <div className="flex items-center gap-1.5 text-[12px] font-bold text-text-main bg-bg-secondary px-2 py-1 rounded-md">
+                    <MapPin size={12} className="text-primary-main" />
+                    {p.locationName || 'Unassigned'}
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Tier</span>
+                  <span className="text-[13px] font-black text-text-main font-mono">
+                    {p.commissionTier}x
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Footer */}
+              <div className="p-3 border-t border-border-subtle bg-bg-base flex items-center justify-end gap-2">
+                <button
+                  className="w-10 h-10 flex items-center justify-center bg-surface-card rounded-xl text-text-main hover:bg-bg-secondary border border-border-subtle shadow-sm transition-all active:scale-90"
+                  onClick={() => openEdit(p)}
+                  title="Edit Profile"
+                >
+                  <Edit size={16} />
+                </button>
+                <button
+                  className={cn(
+                    'w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm border active:scale-90',
+                    p.isActive
+                      ? 'bg-surface-card text-error-main border-error-main/30 hover:bg-error-main/10'
+                      : 'bg-success text-white border-success hover:bg-success/90'
+                  )}
+                  onClick={() => toggleActive(p.id)}
+                  title={p.isActive ? "Deactivate" : "Activate"}
+                >
+                  <Power size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

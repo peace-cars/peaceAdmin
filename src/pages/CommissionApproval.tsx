@@ -142,7 +142,7 @@ export default function CommissionApproval() {
               <div
                 key={c.id}
                 className={cn(
-                  'bg-surface-card rounded-2xl shadow-sm border border-border-subtle/50 hover:shadow-md hover:-translate-y-0.5 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 group transition-all hover:border-primary-main/30 relative overflow-hidden',
+                  'bg-surface-card rounded-2xl shadow-sm border border-border-subtle/50 hover:shadow-md hover:-translate-y-0.5 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 group transition-all  relative overflow-hidden',
                   c.isPaid &&
                     'opacity-60 bg-bg-secondary/50 grayscale shadow-none border-dashed pointer-events-none',
                 )}

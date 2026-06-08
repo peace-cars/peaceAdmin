@@ -10,9 +10,17 @@ const getApiBase = () => {
   const isLocalhost =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const defaultApi =
-    isLocalhost && !isNative ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
-  let apiBase = import.meta.env.VITE_API_URL || defaultApi;
+    
+  let apiBase = 'https://backend-eabm.onrender.com';
+  
+  if (isNative) {
+    apiBase = 'http://10.0.2.2:3000';
+  } else if (import.meta.env.VITE_API_URL) {
+    apiBase = import.meta.env.VITE_API_URL;
+  } else if (isLocalhost) {
+    apiBase = 'http://localhost:3000';
+  }
+
   if (!apiBase.endsWith('/api/v1')) {
     apiBase = apiBase.replace(/\/+$/, '') + '/api/v1';
   }
@@ -20,13 +28,22 @@ const getApiBase = () => {
 };
 
 const getBackendHosts = () => {
+  const isNative = Capacitor.isNativePlatform();
   const isLocalhost =
     typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const defaultHost = (
-    isLocalhost ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com'
-  ).replace(/\/+$/, '');
-  return [import.meta.env.VITE_API_URL?.replace(/\/+$/, '') || defaultHost, defaultHost];
+    
+  let activeHost = 'https://backend-eabm.onrender.com';
+  
+  if (isNative) {
+    activeHost = 'http://10.0.2.2:3000';
+  } else if (import.meta.env.VITE_API_URL) {
+    activeHost = import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+  } else if (isLocalhost) {
+    activeHost = 'http://localhost:3000';
+  }
+  
+  return [activeHost, 'https://backend-eabm.onrender.com'];
 };
 
 // Global API Interceptor for seamless production and native networking

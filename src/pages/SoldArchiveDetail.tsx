@@ -117,7 +117,7 @@ export default function SoldArchiveDetail() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary-main/20 border-t-primary-main rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-primary-main/20  rounded-full animate-spin" />
           <p className="text-primary-main font-bold text-[12px] tracking-widest uppercase">Loading Archive Record…</p>
         </div>
       </div>

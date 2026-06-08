@@ -1,11 +1,14 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
 const getApiUrl = () => {
+  const isNative = Capacitor.isNativePlatform();
+  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   let base = import.meta.env.VITE_API_URL;
-  if (!base) {
-    const isNative = Capacitor.isNativePlatform();
-    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    base = (isLocalhost && !isNative) ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
+  
+  if (isNative) {
+    base = 'http://10.0.2.2:3000';
+  } else if (!base) {
+    base = (isLocalhost) ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
   }
   if (!base.endsWith('/api/v1')) {
     base = base.replace(/\/+$/, '') + '/api/v1';
@@ -67,13 +70,15 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
   let finalEndpoint = endpoint;
   if (method === 'GET') {
     const selectedBranch = localStorage.getItem('admin_selected_branch');
-    if (selectedBranch && selectedBranch !== 'all' && (userRole === 'ADMIN' || userRole === 'DISTRICT_MANAGER' || userRole === 'GENERAL_MANAGER' || userRole === 'FINANCE_AUDITOR')) {
+    if (selectedBranch && selectedBranch.toUpperCase() !== 'ALL' && !endpoint.startsWith('/locations')) {
       const separator = finalEndpoint.includes('?') ? '&' : '?';
       finalEndpoint = `${finalEndpoint}${separator}branchId=${selectedBranch}`;
     }
   }
   const cacheKey = btoa(finalEndpoint); // Branch-aware cache key
-  const url = `${API_URL}${finalEndpoint.startsWith('/') ? finalEndpoint : `/${finalEndpoint}`}`;
+  const url = finalEndpoint.startsWith('http') 
+    ? finalEndpoint 
+    : `${API_URL}${finalEndpoint.startsWith('/') ? finalEndpoint : `/${finalEndpoint}`}`;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -105,7 +110,7 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
       
       try {
-        const response = await fetch(url, { ...options, headers, signal: controller.signal });
+        const response = await fetch(url, { ...options, headers, credentials: 'include', signal: controller.signal });
         clearTimeout(timeoutId);
         
         if (!response.ok) {

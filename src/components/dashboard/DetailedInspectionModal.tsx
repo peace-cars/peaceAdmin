@@ -175,7 +175,7 @@ export const DetailedInspectionModal: React.FC<DetailedInspectionModalProps> = (
   };
 
   const renderPoint = (category: string, point: InspectionPoint) => (
-    <div key={point.id} className="p-4 rounded-2xl bg-surface-card border border-border-subtle/50 hover:border-primary-main/30 transition-colors space-y-3">
+    <div key={point.id} className="p-4 rounded-2xl bg-surface-card border border-border-subtle/50  transition-colors space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[14px] font-medium text-text-main flex-1">{point.label}</p>
         <div className="flex bg-bg-secondary rounded-xl p-1 shrink-0">

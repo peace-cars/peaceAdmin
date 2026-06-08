@@ -1,3 +1,5 @@
+import { api } from './api';
+
 interface CacheItem {
   data: any;
   timestamp: number;
@@ -35,12 +37,13 @@ export const apiCache = {
  * 3. Only triggers onData update if the fresh data has actually changed, preventing flashing.
  */
 export async function fetchWithCache(
-  url: string,
+  endpoint: string,
   options: RequestInit = {},
   onData: (data: any) => void,
   ttl: number = 10000 // 10s default TTL
 ) {
-  const cacheKey = `${url}_${options.method || 'GET'}_${JSON.stringify(options.body || '')}`;
+  const selectedBranch = localStorage.getItem('admin_selected_branch') || 'ALL';
+  const cacheKey = `${endpoint}_${options.method || 'GET'}_${JSON.stringify(options.body || '')}_${selectedBranch}`;
 
   // 1. Get cached state
   const cached = apiCache.get(cacheKey, ttl);
@@ -50,9 +53,7 @@ export async function fetchWithCache(
 
   // 2. Perform background request
   try {
-    const res = await fetch(url, options);
-    if (!res.ok) throw new Error(`Fetch failed with status ${res.status}`);
-    const freshData = await res.json();
+    const freshData = await api.get(endpoint, options);
 
     // 3. Check for actual diff
     const cachedStr = cached ? JSON.stringify(cached) : null;
@@ -64,10 +65,11 @@ export async function fetchWithCache(
     }
     return freshData;
   } catch (err) {
-    console.warn(`[API Cache] Revalidation failed for ${url}:`, err);
+    console.warn(`[API Cache] Revalidation failed for ${endpoint}:`, err);
     if (cached !== null) {
       onData(cached);
     }
     throw err;
   }
 }
+

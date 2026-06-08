@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
+import { fetchWithCache } from '../lib/cache';
 import { KpiTile } from '../components/ui/KpiTile';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -47,9 +48,8 @@ export default function BranchManagement() {
   });
   const [selectedDM, setSelectedDM] = useState('');
 
-  const fetchBranches = async () => {
-    try {
-      const data = await api.get<any[]>('/locations');
+  const fetchBranches = () => {
+    fetchWithCache('/locations', {}, (data) => {
       setBranches(
         Array.isArray(data)
           ? data.map((b: any) => ({
@@ -59,27 +59,19 @@ export default function BranchManagement() {
             }))
           : [],
       );
-    } catch (e) {
-      console.error(e);
-    }
+    }).catch(e => console.error(e));
   };
 
-  const fetchPeople = async () => {
-    try {
-      const data = await api.get<any[]>('/people');
+  const fetchPeople = () => {
+    fetchWithCache('/people', {}, (data) => {
       setPeople(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error(e);
-    }
+    }).catch(e => console.error(e));
   };
 
-  const fetchBranchStaff = async (branchId: string) => {
-    try {
-      const data = await api.get<any[]>(`/locations/${branchId}/staff`);
+  const fetchBranchStaff = (branchId: string) => {
+    fetchWithCache(`/locations/${branchId}/staff`, {}, (data) => {
       setBranchStaff((prev) => ({ ...prev, [branchId]: Array.isArray(data) ? data : [] }));
-    } catch (e) {
-      console.error(e);
-    }
+    }).catch(e => console.error(e));
   };
 
   useEffect(() => {
@@ -435,7 +427,7 @@ export default function BranchManagement() {
                       {branchStaff[branch.id].map((staff) => (
                         <div
                           key={staff.id}
-                          className="flex items-center gap-4 bg-surface-card rounded-xl p-4 border border-border-subtle/30 shadow-sm group hover:border-primary-main/30 transition-all"
+                          className="flex items-center gap-4 bg-surface-card rounded-xl p-4 border border-border-subtle/30 shadow-sm group  transition-all"
                         >
                           <div
                             className={cn(
@@ -574,7 +566,7 @@ export default function BranchManagement() {
                     'w-full flex items-center gap-4 p-4 rounded-xl border transition-all text-left',
                     selectedDM === dm.id
                       ? 'border-primary-main bg-primary-subtle/30 shadow-md'
-                      : 'border-border-subtle hover:border-primary-main/30 bg-white',
+                      : 'border-border-subtle  bg-white',
                   )}
                 >
                   <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-200">
@@ -640,7 +632,7 @@ export default function BranchManagement() {
                     'w-full flex items-center gap-4 p-4 rounded-xl border transition-all text-left',
                     staffForm.personId === staff.id
                       ? 'border-primary-main bg-primary-subtle/30 shadow-md'
-                      : 'border-border-subtle hover:border-primary-main/30 bg-white',
+                      : 'border-border-subtle  bg-white',
                   )}
                 >
                   <div className="w-10 h-10 rounded-xl bg-bg-base flex items-center justify-center border border-border-subtle">

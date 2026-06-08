@@ -108,7 +108,7 @@ export default function StaffReports() {
               filteredMetrics.map((staff) => (
                 <div
                   key={staff.id}
-                  className="bg-surface-card rounded-2xl shadow-sm border border-border-subtle/30 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 p-5 hover:border-primary-main/20 group"
+                  className="bg-surface-card rounded-2xl shadow-sm border border-border-subtle/30 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 p-5  group"
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-6">

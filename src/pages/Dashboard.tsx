@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { 
   Activity, TrendingUp, Users, Package, 
   MapPin, CheckCircle2, AlertTriangle, Clock, 
-  CarFront, DollarSign, ChevronRight, User,
+  CarFront, DollarSign, ChevronRight, ChevronDown, User,
   Building2, LineChart, Trophy, ClipboardCheck,
-  ShieldCheck, Zap
+  ShieldCheck, Zap, X
 } from 'lucide-react';
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
+import { fetchWithCache } from "../lib/cache";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Tooltip } from "../components/ui/Tooltip";
@@ -27,7 +28,12 @@ type RoleType = "USER" | "BROKER" | "STAFF" | "DISTRICT_MANAGER" | "GENERAL_MANA
 
 export default function Dashboard() {
   const { session } = useAuth();
-  const role = (localStorage.getItem('admin_role') as RoleType) || "DISTRICT_MANAGER";
+  // Always derive role from the JWT-backed session profile — never trust localStorage alone.
+  // localStorage('admin_role') may be stale, missing, or from a previous login.
+  const role = (
+    session?.profile?.role ||
+    (localStorage.getItem('admin_role') as RoleType)
+  ) ?? null;
   const LOCATION_NAME = localStorage.getItem('admin_location') || "Central Registry Hub";
   const ADMIN_NAME = session?.profile?.full_name || "Administrator";
 
@@ -51,92 +57,85 @@ export default function Dashboard() {
   const [staffTasks, setStaffTasks] = useState<any[]>([]);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
+  const [selectedBranch, setSelectedBranch] = useState<string>(
+    () => localStorage.getItem('admin_selected_branch') || 'ALL'
+  );
+  const [isBranchPickerOpen, setIsBranchPickerOpen] = useState(false);
+
+  // Persist branch selection across pages
+  const selectBranch = (id: string, name?: string) => {
+    setSelectedBranch(id);
+    localStorage.setItem('admin_selected_branch', id);
+    localStorage.setItem('admin_selected_branch_name', id === 'ALL' ? 'ALL BRANCHES' : (name || 'Branch'));
+    setIsBranchPickerOpen(false);
+  };
 
   useEffect(() => {
     if (!session) return;
 
     setLoadingMetrics(true);
+    let pendingRequests = 0;
+    const checkComplete = () => {
+      pendingRequests--;
+      if (pendingRequests <= 0) setLoadingMetrics(false);
+    };
     
-    const branchQuery = selectedBranch !== 'ALL' ? `?branchId=${selectedBranch}` : '';
+    // branchQuery removed: handled globally by api.ts interceptor
 
-    const promises: Promise<any>[] = [
-      api.get<any[]>(`/staff-performance/leaderboard${branchQuery}`)
-        .then(data => setLeaderboard(Array.isArray(data) ? data : []))
-        .catch(console.error),
-      api.get<any>('/settings')
-        .then(data => { if (data.exchange_rate_usd_etb) setExchangeRate(data.exchange_rate_usd_etb); })
-        .catch(console.error)
-    ];
+    const doFetch = (url: string, onData: (data: any) => void) => {
+      pendingRequests++;
+      fetchWithCache(url, {}, onData).catch(console.error).finally(checkComplete);
+    };
+
+    doFetch(`/staff-performance/leaderboard`, data => setLeaderboard(Array.isArray(data) ? data : []));
+    doFetch('/settings', data => { if (data && data.exchange_rate_usd_etb) setExchangeRate(data.exchange_rate_usd_etb); });
 
     if (role === 'GENERAL_MANAGER') {
-      promises.push(
-        Promise.all([
-          api.get<any[]>(`/vehicles/profitability${branchQuery}`),
-          api.get<any[]>('/locations'),
-          api.get<any[]>(`/commission-workflow${branchQuery}`),
-          api.get<any[]>('/locations/districts/overview')
-        ]).then(([profitData, locationData, commissionData, districtData]) => {
-          setProfitability(Array.isArray(profitData) ? profitData : []);
-          setBranchCount(Array.isArray(locationData) ? locationData.length : 0);
-          setDmBranches(Array.isArray(locationData) ? locationData : []);
-          
-          if (selectedBranch === 'ALL') {
-             setDistrictOverview(Array.isArray(districtData) ? districtData : []);
-          } else {
-             // Filter overview or just hide it
-             setDistrictOverview(Array.isArray(districtData) ? districtData.filter((d: any) => d.district_id === selectedBranch) : []);
-          }
-          
-          if (Array.isArray(commissionData)) {
-            const pending = commissionData
-              .filter((c: any) => !c.isPaid)
-              .reduce((sum: number, c: any) => sum + (Number(c.amountEtb) || 0), 0);
-            setPendingCommissions(pending);
-          }
-        }).catch(console.error)
-      );
+      doFetch(`/vehicles/profitability`, data => setProfitability(Array.isArray(data) ? data : []));
+      doFetch('/locations', data => {
+        setBranchCount(Array.isArray(data) ? data.length : 0);
+        setDmBranches(Array.isArray(data) ? data : []);
+      });
+      doFetch(`/commission-workflow`, data => {
+        if (Array.isArray(data)) {
+          const pending = data
+            .filter((c: any) => !c.isPaid)
+            .reduce((sum: number, c: any) => sum + (Number(c.amountEtb) || 0), 0);
+          setPendingCommissions(pending);
+        }
+      });
+      doFetch('/locations/districts/overview', data => {
+        if (selectedBranch === 'ALL') {
+           setDistrictOverview(Array.isArray(data) ? data : []);
+        } else {
+           setDistrictOverview(Array.isArray(data) ? data.filter((d: any) => d.district_id === selectedBranch) : []);
+        }
+      });
     }
 
     if (role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER') {
-      promises.push(
-        api.get<any[]>(`/people${branchQuery}`)
-          .then(data => {
-            const active = Array.isArray(data) ? data.filter((s: any) => s.isActive) : [];
-            setBranchStaff(active);
-          }) 
-          .catch(console.error)
-      );
+      doFetch(`/people`, data => {
+        const active = Array.isArray(data) ? data.filter((s: any) => s.isActive) : [];
+        setBranchStaff(active);
+      });
     }
 
     if (role === 'DISTRICT_MANAGER') {
-      promises.push(
-        api.get<any[]>('/locations')
-          .then(data => setDmBranches(Array.isArray(data) ? data : []))
-          .catch(console.error)
-      );
+      doFetch('/locations', data => setDmBranches(Array.isArray(data) ? data : []));
     }
 
     if (role === 'STAFF') {
-      promises.push(
-        api.get<any[]>('/staff-tasks')
-          .then(data => setStaffTasks(Array.isArray(data) ? data : []))
-          .catch(console.error)
-      );
+      doFetch('/staff-tasks', data => setStaffTasks(Array.isArray(data) ? data : []));
     }
 
     const needsPipelineData = role === 'DISTRICT_MANAGER' || role === 'FINANCE_AUDITOR' || role === 'GENERAL_MANAGER';
     if (needsPipelineData) {
-      promises.push(
-        api.get<any[]>(`/staff-budgets${branchQuery}`).then(data => setBudgets(Array.isArray(data) ? data : [])).catch(console.error),
-        api.get<any[]>(`/trade-in-requests${branchQuery}`).then(data => setTradeIns(Array.isArray(data) ? data : [])).catch(console.error),
-        api.get<any[]>(`/vehicles${branchQuery}`).then(data => setShowroomCount(Array.isArray(data) ? data.length : 0)).catch(console.error)
-      );
+      doFetch(`/staff-budgets`, data => setBudgets(Array.isArray(data) ? data : []));
+      doFetch(`/trade-in-requests`, data => setTradeIns(Array.isArray(data) ? data : []));
+      doFetch(`/vehicles`, data => setShowroomCount(Array.isArray(data) ? data.length : 0));
     }
-
-    Promise.all(promises).finally(() => {
-      setLoadingMetrics(false);
-    });
+    
+    if (pendingRequests === 0) setLoadingMetrics(false);
   }, [session, role, selectedBranch]);
 
   // Actions
@@ -230,6 +229,87 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 pb-20">
+
+      {/* ── MOBILE BRANCH PICKER BOTTOM SHEET ─────────────────────────────── */}
+      {isBranchPickerOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-[300] bg-black/40 backdrop-blur-sm flex items-end"
+          onClick={() => setIsBranchPickerOpen(false)}
+        >
+          <div
+            className="w-full bg-bg-base rounded-t-[28px] p-5 pb-10 flex flex-col gap-3 max-h-[70vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[14px] font-black text-text-main uppercase tracking-wide">Select Branch</p>
+              <button onClick={() => setIsBranchPickerOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-bg-secondary">
+                <X size={16} className="text-text-muted" />
+              </button>
+            </div>
+            <button
+              onClick={() => selectBranch('ALL')}
+              className={cn(
+                'w-full flex items-center gap-3 px-4 py-3 rounded-[14px] border text-left transition-all',
+                selectedBranch === 'ALL'
+                  ? 'bg-primary-main/10 border-primary-main/30 text-primary-main'
+                  : 'bg-surface-card border-border-subtle/30 text-text-main',
+              )}
+            >
+              <Building2 size={16} className="shrink-0" />
+              <span className="text-[14px] font-bold">National Overview</span>
+              {selectedBranch === 'ALL' && <CheckCircle2 size={14} className="ml-auto text-primary-main" />}
+            </button>
+            {dmBranches.length === 0 ? (
+              <div className="py-6 text-center">
+                <div className="w-8 h-8 border-4 border-primary-main/20 rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-[12px] text-text-muted font-bold uppercase tracking-wider">Loading branches...</p>
+              </div>
+            ) : (
+              dmBranches.map((b: any) => (
+                <button
+                  key={b.id}
+                  onClick={() => selectBranch(b.id, b.name || b.code)}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-4 py-3 rounded-[14px] border text-left transition-all',
+                    selectedBranch === b.id
+                      ? 'bg-primary-main/10 border-primary-main/30 text-primary-main'
+                      : 'bg-surface-card border-border-subtle/30 text-text-main',
+                  )}
+                >
+                  <MapPin size={16} className="shrink-0" />
+                  <span className="text-[14px] font-bold">{b.name || b.code}</span>
+                  {selectedBranch === b.id && <CheckCircle2 size={14} className="ml-auto text-primary-main" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE STICKY BRANCH BANNER (GM only) ───────────────────── */}
+      {role === 'GENERAL_MANAGER' && (
+        <div className="md:hidden sticky top-0 z-40 bg-bg-base -mx-4 px-4 pb-2">
+          <div className="h-[40px] flex items-center">
+            <button
+              onClick={() => setIsBranchPickerOpen(true)}
+              className="flex items-center gap-2 text-text-main font-black uppercase tracking-wide text-[16px]"
+            >
+              {selectedBranch === 'ALL'
+                ? 'ALL BRANCHES'
+                : (dmBranches.find((b: any) => b.id === selectedBranch)?.name || localStorage.getItem('admin_selected_branch_name') || 'Branch')}
+              <ChevronDown size={18} />
+            </button>
+          </div>
+          <div className="bg-surface-card rounded-[16px] px-4 py-3 shadow-sm border border-border-subtle/30 flex items-center gap-3">
+            <Activity size={20} className="text-[#1976d2] shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-black tracking-tight text-text-main">Command Center</p>
+              <p className="text-[10px] text-text-muted font-medium truncate">Real-time branch performance overview</p>
+            </div>
+            <ChevronRight size={16} className="text-text-muted shrink-0" />
+          </div>
+        </div>
+      )}
       {/* Welcome Header */}
       <div className="pb-6 border-b border-border-subtle/30 flex flex-col md:flex-row md:items-end justify-between gap-4">
          <div className="space-y-1">
@@ -249,8 +329,8 @@ export default function Dashboard() {
          </div>
          
          {/* Branch Filter Dropdown */}
-         {(role === 'GENERAL_MANAGER' || role === 'DISTRICT_MANAGER') && dmBranches.length > 0 && (
-           <div className="flex items-center gap-2">
+        {role === 'GENERAL_MANAGER' && (
+          <div className="flex items-center gap-2">
              <span className="text-[13px] font-medium text-text-muted">Viewing:</span>
              <select 
                className="bg-surface-card border border-border-subtle text-[13px] md:text-[14px] font-semibold h-10 px-3 pr-8 rounded-xl text-text-main outline-none focus:border-primary-main/50 appearance-none cursor-pointer shadow-sm transition-all"

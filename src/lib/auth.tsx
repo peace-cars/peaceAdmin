@@ -53,42 +53,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // If token has expired or has less than 15 minutes remaining, refresh it!
           if (parsed.expires_at && parsed.expires_at - nowSec < 900) {
             console.log('[Admin Auth] Token is expiring or expired, attempting refresh...');
-            if (parsed.refresh_token) {
-              const { data, error } = await supabase.auth.refreshSession({
-                refresh_token: parsed.refresh_token
-              });
-              
-              if (!error && data?.session) {
-                const newSessionData: SessionData = {
-                  access_token: data.session.access_token,
-                  refresh_token: data.session.refresh_token,
-                  expires_at: data.session.expires_at || Math.floor(Date.now() / 1000) + 3600,
-                  user: parsed.user,
-                  profile: parsed.profile
-                };
-                localStorage.setItem('admin_session', JSON.stringify(newSessionData));
-                setSession(newSessionData);
-                await supabase.auth.setSession({
-                  access_token: data.session.access_token,
-                  refresh_token: data.session.refresh_token
-                });
-                setLoading(false);
-                return;
-              } else {
-                console.warn('[Admin Auth] Refresh failed, logging out:', error?.message);
-                localStorage.removeItem('admin_session');
-                localStorage.removeItem('admin_role');
-                localStorage.removeItem('admin_location');
-                localStorage.removeItem('admin_selected_branch');
-                setSession(null);
-              }
+            const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+            if (res.ok) {
+              const result = await res.json();
+              const payload = result?.data ?? result;
+              const newSessionData: SessionData = {
+                // Store the real token — the Bearer header is the only reliable cross-origin auth mechanism
+                access_token: payload.session?.access_token || payload.access_token || parsed.access_token || '',
+                refresh_token: payload.session?.refresh_token || payload.refresh_token || '',
+                expires_at: payload.session?.expires_at || Math.floor(Date.now() / 1000) + 3600,
+                user: parsed.user,
+                profile: parsed.profile
+              };
+              localStorage.setItem('admin_session', JSON.stringify(newSessionData));
+              setSession(newSessionData);
+              setLoading(false);
+              return;
             } else {
+              console.warn('[Admin Auth] Refresh failed, logging out');
               localStorage.removeItem('admin_session');
               localStorage.removeItem('admin_role');
               localStorage.removeItem('admin_location');
               localStorage.removeItem('admin_selected_branch');
               setSession(null);
             }
+          } else if (!parsed.access_token) {
+            // ── Session Repair Path ──────────────────────────────────────────
+            // Legacy sessions (before the empty-token bug was fixed) have
+            // access_token: '' stored in localStorage. Trigger a silent refresh
+            // to restore the real token without forcing the user to re-login.
+            console.log('[Admin Auth] Empty token detected in stored session — triggering silent repair refresh...');
+            try {
+              const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+              if (res.ok) {
+                const result = await res.json();
+                const payload = result?.data ?? result;
+                const repairedSession: SessionData = {
+                  access_token: payload.session?.access_token || payload.access_token || '',
+                  refresh_token: payload.session?.refresh_token || payload.refresh_token || '',
+                  expires_at: payload.session?.expires_at || Math.floor(Date.now() / 1000) + 3600,
+                  user: parsed.user,
+                  profile: parsed.profile
+                };
+                if (repairedSession.access_token) {
+                  localStorage.setItem('admin_session', JSON.stringify(repairedSession));
+                  setSession(repairedSession);
+                  console.log('[Admin Auth] Session repair successful.');
+                  setLoading(false);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.warn('[Admin Auth] Session repair failed, using cookie-only auth');
+            }
+            // Fall through — cookie auth may still work
+            setSession(parsed);
           } else {
             // Validate local storage role against session to prevent tampering
             const storedRole = localStorage.getItem('admin_role');
@@ -99,10 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             setSession(parsed);
-            await supabase.auth.setSession({
-              access_token: parsed.access_token,
-              refresh_token: parsed.refresh_token
-            });
+            // Supabase realtime is disabled
           }
         } catch (e) {
           console.error('[Admin Auth] Init error:', e);
@@ -124,34 +140,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Periodic background token refresh check
   useEffect(() => {
-    if (!session?.expires_at || !session?.refresh_token) return;
+    if (!session?.expires_at) return;
     const interval = setInterval(async () => {
       const nowSec = Math.floor(Date.now() / 1000);
       
       // If token expires in less than 15 minutes, refresh in background
       if (session.expires_at - nowSec < 900) {
         console.log('[Admin Auth] Background token refresh triggered...');
-        const { data, error } = await supabase.auth.refreshSession({
-          refresh_token: session.refresh_token
-        });
-        
-        if (!error && data?.session) {
-          const newSessionData: SessionData = {
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-            expires_at: data.session.expires_at || Math.floor(Date.now() / 1000) + 3600,
-            user: session.user,
-            profile: session.profile
-          };
-          localStorage.setItem('admin_session', JSON.stringify(newSessionData));
-          setSession(newSessionData);
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token
-          });
-          console.log('[Admin Auth] Background token refresh successful.');
-        } else {
-          console.warn('[Admin Auth] Background refresh failed:', error?.message);
+        try {
+          const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+          if (res.ok) {
+            const result = await res.json();
+            const payload = result?.data ?? result;
+            const newSessionData: SessionData = {
+              access_token: payload.session?.access_token || payload.access_token || session.access_token || '',
+              refresh_token: payload.session?.refresh_token || payload.refresh_token || '',
+              expires_at: payload.session?.expires_at || Math.floor(Date.now() / 1000) + 3600,
+              user: session.user,
+              profile: session.profile
+            };
+            localStorage.setItem('admin_session', JSON.stringify(newSessionData));
+            setSession(newSessionData);
+            console.log('[Admin Auth] Background token refresh successful.');
+          } else {
+            console.warn('[Admin Auth] Background refresh failed');
+          }
+        } catch (e) {
+          console.error('[Admin Auth] Background refresh error', e);
         }
       }
     }, 60000); // Check every 60 seconds
@@ -197,8 +212,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const sessionData: SessionData = {
-        access_token: payload.session.access_token,
-        refresh_token: payload.session.refresh_token,
+        // Store the real token so apiFetch can send it in the Authorization header
+        // (cross-origin admin SPA cannot rely on httpOnly cookies across ports)
+        access_token: payload.session?.access_token || '',
+        refresh_token: payload.session?.refresh_token || '',
         expires_at: payload.session.expires_at,
         user: payload.user,
         profile: payload.profile,
@@ -210,11 +227,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('admin_selected_branch');
       setSession(sessionData);
 
-      // Handshake: Notify Supabase client
-      await supabase.auth.setSession({
-        access_token: sessionData.access_token,
-        refresh_token: sessionData.refresh_token
-      });
+      // Supabase realtime is now disabled in frontend or relies on anon key
 
       return {};
     } catch (err: any) {
@@ -256,8 +269,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const sessionData: SessionData = {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
+        access_token: '', // Removed for XSS protection
+        refresh_token: '',
         expires_at: data.session.expires_at,
         user: data.user,
         profile: data.profile,
@@ -268,11 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('admin_branch_id', data.profile?.branch_id || 'HQ');
       setSession(sessionData);
 
-      // Handshake: Notify Supabase client
-      await supabase.auth.setSession({
-        access_token: sessionData.access_token,
-        refresh_token: sessionData.refresh_token
-      });
+      // Supabase realtime disabled for now
 
       return {};
     } catch (err: any) {
@@ -280,7 +289,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      console.error(e);
+    }
     localStorage.removeItem('admin_session');
     localStorage.removeItem('admin_role');
     localStorage.removeItem('admin_location');

@@ -180,7 +180,7 @@ export default function SupportInbox() {
           <div className="flex-1 overflow-y-auto no-scrollbar">
             {loading ? (
               <div className="p-8 text-center">
-                <div className="w-8 h-8 border-3 border-primary-main/20 border-t-primary-main rounded-full animate-spin mx-auto mb-3" />
+                <div className="w-8 h-8 border-3 border-primary-main/20  rounded-full animate-spin mx-auto mb-3" />
                 <p className="text-[12px] font-bold text-text-muted font-medium">
                   Loading conversations...
                 </p>
@@ -200,7 +200,7 @@ export default function SupportInbox() {
                   className={cn(
                     'w-full text-left p-4 border-b border-border-subtle/30 hover:bg-bg-secondary/50 transition-all flex gap-3 relative group',
                     selectedConvId === conv.id &&
-                      'bg-primary-main/10 border-l-[3px] border-l-primary-main',
+                      'bg-primary-main/10  ',
                   )}
                 >
                   <div

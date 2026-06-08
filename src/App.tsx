@@ -3,8 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './lib/auth';
 import { ScrollToTop } from './components/ui/ScrollToTop';
 import { CapacitorBackButtonHandler } from './components/ui/CapacitorBackButtonHandler';
+import { PwaInstallPrompt } from './components/ui/PwaInstallPrompt';
 import { Capacitor } from '@capacitor/core';
-import { unwrapApiResponse } from './lib/api';
+import { unwrapApiResponse, apiFetch } from './lib/api';
+import { fetchWithCache } from './lib/cache';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Acquisitions = lazy(() => import('./pages/Acquisitions'));
 const InspectionReports = lazy(() => import('./pages/InspectionReports'));
@@ -37,6 +39,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       initializePushNotifications(session.user.id);
     }
   }, [session]);
+
+  // ── Global prefetcher: warm all critical admin caches on login
+  useEffect(() => {
+    if (!session?.access_token) return;
+    const prefetch = (url: string) =>
+      fetchWithCache(url, {}, () => {}).catch(() => {});
+    Promise.allSettled([
+      prefetch(`${API_URL}/vehicles`),
+      prefetch(`${API_URL}/locations`),
+      prefetch(`${API_URL}/trade-in-requests`),
+      prefetch(`${API_URL}/sourcing-requests`),
+    ]);
+  }, [session?.user?.id]);
 
   const handleToggleNotifs = async () => {
     if (session?.user?.id && !Capacitor.isNativePlatform() && Notification.permission === 'default') {
@@ -91,7 +106,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center gap-4">
-      <div className="w-10 h-10 border-4 border-primary-main/20 border-t-primary-main rounded-full animate-spin" />
+      <div className="w-10 h-10 border-4 border-primary-main/20  rounded-full animate-spin" />
       <p className="text-text-muted font-bold uppercase tracking-widest text-[10px]">Verifying credentials...</p>
     </div>;
   }
@@ -168,6 +183,7 @@ function App() {
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         </Routes>
       </Suspense>
+      <PwaInstallPrompt />
     </Router>
   );
 }

@@ -76,157 +76,95 @@ function RequestCard({
   const isActive = !!req.assigned_staff?.id;
 
   return (
-    <div className={cn(
-      'rounded-2xl border overflow-hidden transition-all shadow-sm',
-      needsBranch ? 'border-warning/40 bg-warning/[0.02]' :
-      needsStaff  ? 'border-primary-main/30 bg-primary-main/[0.02]' :
-      'border-border-subtle/40 bg-surface-card'
-    )}>
-      {/* Top strip indicator */}
-      <div className={cn(
-        'h-0.5 w-full',
-        needsBranch ? 'bg-warning' : needsStaff ? 'bg-primary-main' : 'bg-success'
-      )} />
-
-      <div className="p-4 md:p-5">
-        {/* Header row */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-              needsBranch ? 'bg-warning/10 border border-warning/20' :
-              'bg-primary-main/10 border border-primary-main/20'
-            )}>
-              <Car size={18} className={needsBranch ? 'text-warning' : 'text-primary-main'} />
-            </div>
-            <div className="min-w-0">
-              <p className="font-black text-[15px] text-text-main truncate">{req.make} {req.model}</p>
-              <p className="text-[12px] text-text-secondary truncate">
-                {req.min_year}–{req.max_year} • {req.fuel_type || 'Any fuel'} • {req.transmission || 'Any'}
-              </p>
-            </div>
+    <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden transition-all shadow-sm flex flex-col hover:border-border-subtle/80">
+      <div className="p-3 md:p-4 flex flex-col md:flex-row gap-4 items-start md:items-center">
+        {/* Left: Icon & Core Details */}
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-12 h-12 rounded-xl bg-bg-secondary border border-border-subtle/50 flex items-center justify-center shrink-0">
+            <Car size={20} className="text-text-muted" />
           </div>
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <Badge variant={status.variant}>{status.label}</Badge>
-            <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', urgency.bg, urgency.color)}>
-              ⚡ {req.urgency}
-            </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="font-black text-[14px] text-text-main truncate">{req.make} {req.model}</p>
+              <Badge variant={status.variant} className="text-[9px] h-4 px-1.5">{status.label}</Badge>
+            </div>
+            <p className="text-[12px] text-text-muted truncate font-medium">
+              {req.min_year}–{req.max_year} • {req.fuel_type || 'Any'} • <span className="text-success font-bold">{Number(req.max_budget).toLocaleString()} ETB</span>
+            </p>
+            <div className="flex items-center gap-2 mt-1 text-[11px]">
+              <span className={cn('font-bold px-1.5 py-0.5 rounded-md', urgency.bg, urgency.color)}>
+                ⚡ {req.urgency}
+              </span>
+              <span className="text-text-muted/60 flex items-center gap-1">
+                <User size={10} /> {req.customer?.full_name || req.contact_name || '—'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Info row */}
-        <div className="grid grid-cols-2 gap-2 mb-4 text-[12px]">
-          <div className="bg-bg-secondary rounded-xl p-2.5 border border-border-subtle/30">
-            <p className="text-text-muted font-medium">Budget</p>
-            <p className="font-black text-success text-[14px]">{Number(req.max_budget).toLocaleString()} ETB</p>
-          </div>
-          <div className="bg-bg-secondary rounded-xl p-2.5 border border-border-subtle/30">
-            <p className="text-text-muted font-medium">
-              {req.branch?.id ? 'Branch' : 'Customer'}
-            </p>
-            <p className="font-bold text-text-main truncate text-[13px]">
-              {req.branch?.name || req.customer?.full_name || req.contact_name || '—'}
-            </p>
-          </div>
+        {/* Right: Actions / Assignment */}
+        <div className="shrink-0 w-full md:w-auto flex flex-col gap-2 items-stretch md:items-end border-t md:border-t-0 border-border-subtle/30 pt-3 md:pt-0">
+          {!isActive ? (
+            <div className="flex flex-col gap-2 w-full md:w-48">
+              {needsBranch && branches.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-bg-secondary p-1 rounded-lg border border-border-subtle/50">
+                  <select
+                    className="flex-1 min-w-0 bg-transparent text-[11px] font-bold px-2 py-1 outline-none text-text-main"
+                    value={selectedBranch}
+                    onChange={e => setSelectedBranch(e.target.value)}
+                  >
+                    <option value="">Branch...</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name || b.code}</option>
+                    ))}
+                  </select>
+                  <button
+                    disabled={!selectedBranch}
+                    onClick={() => { onAssignBranch(req.id, selectedBranch); setSelectedBranch(''); }}
+                    className="bg-primary-main text-white w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                  >
+                    <ArrowRight size={12} />
+                  </button>
+                </div>
+              )}
+              {needsStaff && staffOnly.length > 0 && (
+                <div className="flex items-center gap-1.5 bg-bg-secondary p-1 rounded-lg border border-border-subtle/50">
+                  <select
+                    className="flex-1 min-w-0 bg-transparent text-[11px] font-bold px-2 py-1 outline-none text-text-main"
+                    value={selectedStaff}
+                    onChange={e => setSelectedStaff(e.target.value)}
+                  >
+                    <option value="">Staff...</option>
+                    {staffOnly.map(s => (
+                      <option key={s.id} value={s.id}>{s.full_name}</option>
+                    ))}
+                  </select>
+                  <button
+                    disabled={!selectedStaff}
+                    onClick={() => { onAssignStaff(req.id, selectedStaff); setSelectedStaff(''); }}
+                    className="bg-primary-main text-white w-6 h-6 rounded flex items-center justify-center disabled:opacity-50"
+                  >
+                    <UserCheck size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between md:justify-end gap-2 text-[11px] bg-success/5 rounded-lg px-2.5 py-1.5 border border-success/20 w-full md:w-auto">
+              <span className="text-success font-bold flex items-center gap-1">
+                <CheckCircle2 size={12} /> {req.assigned_staff?.full_name}
+              </span>
+            </div>
+          )}
+
+          {/* Toggle Button */}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-[10px] font-bold text-text-muted hover:text-text-main transition-colors uppercase tracking-widest mt-1 text-center md:text-right w-full"
+          >
+            {expanded ? 'Collapse' : 'Details'}
+          </button>
         </div>
-
-        {/* Customer contact (always visible) */}
-        {(req.customer?.phone_number || req.contact_phone) && (
-          <div className="flex items-center gap-2 mb-4 text-[13px]">
-            <User size={13} className="text-text-muted shrink-0" />
-            <span className="text-text-main font-semibold truncate">{req.customer?.full_name || req.contact_name}</span>
-            <a href={`tel:${req.customer?.phone_number || req.contact_phone}`}
-               className="flex items-center gap-1 text-primary-main font-bold ml-auto shrink-0 hover:underline">
-              <Phone size={12} />
-              {req.customer?.phone_number || req.contact_phone}
-            </a>
-          </div>
-        )}
-
-        {/* Assignment Actions */}
-        {!isActive && (
-          <div className="space-y-2">
-            {/* Phase 1: GM assigns to branch */}
-            {needsBranch && branches.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 text-warning shrink-0">
-                  <Building2 size={14} />
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Assign Branch</span>
-                </div>
-                <select
-                  className="flex-1 bg-surface-card border border-warning/40 text-[13px] rounded-xl px-3 py-2 outline-none focus:border-warning text-text-main"
-                  value={selectedBranch}
-                  onChange={e => setSelectedBranch(e.target.value)}
-                >
-                  <option value="">Select Branch...</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>{b.name || b.code}</option>
-                  ))}
-                </select>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!selectedBranch}
-                  onClick={() => { onAssignBranch(req.id, selectedBranch); setSelectedBranch(''); }}
-                >
-                  <ArrowRight size={14} />
-                </Button>
-              </div>
-            )}
-
-            {/* Phase 2: DM/GM assigns to staff */}
-            {needsStaff && staffOnly.length > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 text-primary-main shrink-0">
-                  <UserCheck size={14} />
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Assign Staff</span>
-                </div>
-                <select
-                  className="flex-1 bg-surface-card border border-primary-main/30 text-[13px] rounded-xl px-3 py-2 outline-none focus:border-primary-main text-text-main"
-                  value={selectedStaff}
-                  onChange={e => setSelectedStaff(e.target.value)}
-                >
-                  <option value="">Select Staff Member...</option>
-                  {staffOnly.map(s => (
-                    <option key={s.id} value={s.id}>{s.full_name}</option>
-                  ))}
-                </select>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!selectedStaff}
-                  onClick={() => { onAssignStaff(req.id, selectedStaff); setSelectedStaff(''); }}
-                >
-                  <UserCheck size={14} />
-                </Button>
-              </div>
-            )}
-
-            {needsStaff && staffOnly.length === 0 && (
-              <p className="text-[12px] text-text-muted italic flex items-center gap-1.5">
-                <AlertTriangle size={12} /> No active staff in this branch
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Already assigned - show who */}
-        {isActive && (
-          <div className="flex items-center gap-2 text-[13px] text-success bg-success/5 rounded-xl px-3 py-2 border border-success/20">
-            <CheckCircle2 size={14} />
-            <span className="font-bold">{req.assigned_staff?.full_name}</span>
-            <span className="text-text-muted font-medium ml-auto">on the hunt</span>
-          </div>
-        )}
-
-        {/* Expand toggle */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full mt-3 flex items-center justify-center gap-1.5 text-[11px] font-bold text-text-muted hover:text-text-main transition-colors uppercase tracking-wider"
-        >
-          {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          {expanded ? 'Less' : 'Full Spec'}
-        </button>
       </div>
 
       {/* Expanded spec */}
@@ -319,13 +257,13 @@ export function AdminSourcingView({
       </div>
 
       {/* Filter tabs */}
-      <div className="flex bg-bg-secondary border border-border-subtle/40 p-1 rounded-xl w-fit gap-1">
+      <div className="flex bg-bg-secondary border border-border-subtle/40 p-1 rounded-xl w-fit gap-1 overflow-x-auto no-scrollbar max-w-full">
         {(['ALL', 'PENDING', 'ACTIVE'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
             className={cn(
-              'px-4 py-2 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-all',
+              'px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap',
               filter === tab
                 ? 'bg-surface-card text-primary-main shadow-sm'
                 : 'text-text-muted hover:text-text-main'

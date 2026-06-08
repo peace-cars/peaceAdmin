@@ -133,7 +133,7 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
             {filteredItems.map(item => (
               <div
                 key={item.id}
-                className="bg-surface-card border border-border-subtle/30 rounded-2xl overflow-hidden hover:border-primary-main/30 transition-all flex flex-row"
+                className="bg-surface-card border border-border-subtle/30 rounded-2xl overflow-hidden  transition-all flex flex-row"
               >
                 {/* Thumbnail — square left panel */}
                 <div
@@ -241,7 +241,7 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
             {filteredItems.map(item => (
               <div
                 key={item.id}
-                className="bg-surface-card border border-border-subtle/30 rounded-2xl overflow-hidden hover:border-primary-main/30 transition-all flex flex-col"
+                className="bg-surface-card border border-border-subtle/30 rounded-2xl overflow-hidden  transition-all flex flex-col"
               >
                 {/* Thumbnail */}
                 <div

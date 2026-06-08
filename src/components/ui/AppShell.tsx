@@ -101,26 +101,13 @@ export const AppShell: React.FC<AppShellProps> = ({
           onToggleSidebar={handleToggleSidebar}
         />
 
-        {showBackButton && (
-          <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-[95] bg-surface-card/90 backdrop-blur-xl">
-            <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-2 flex items-center">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 bg-bg-secondary/80 border border-border-subtle/60 text-text-main font-semibold hover:bg-bg-secondary transition-all"
-              >
-                <ArrowLeft size={16} />
-                Back
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Scrollable Content */}
         <section
           ref={contentRef}
           tabIndex={-1}
-          className="flex-grow overflow-y-auto no-scrollbar scroll-smooth"
+          className="flex-grow overflow-y-auto overflow-x-clip no-scrollbar scroll-smooth"
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <motion.div

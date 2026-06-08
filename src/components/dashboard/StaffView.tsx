@@ -34,7 +34,7 @@ export const StaffView: React.FC<StaffViewProps> = ({ tasks, onStartInspection }
             ) : pendingTasks.map(task => (
               <div 
                 key={task.id} 
-                className="bg-surface-card rounded-2xl border border-border-subtle overflow-hidden hover:border-primary-main/30 transition-all"
+                className="bg-surface-card rounded-2xl border border-border-subtle overflow-hidden  transition-all"
               >
                 <div className="p-4 space-y-4">
                   <div className="flex items-start justify-between">

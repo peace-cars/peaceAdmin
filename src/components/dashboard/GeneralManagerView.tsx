@@ -128,7 +128,7 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {districtOverview.map((district) => (
-              <div key={district.district_id} className="bg-surface-card rounded-2xl border border-border-subtle/30 overflow-hidden hover:border-primary-main/30 transition-all">
+              <div key={district.district_id} className="bg-surface-card rounded-2xl border border-border-subtle/30 overflow-hidden  transition-all">
                 <div className="p-4 border-b border-border-subtle/30 flex justify-between items-start">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -212,7 +212,7 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
               </div>
             </div>
           ) : escalatedLeads.map(vehicle => (
-             <div key={vehicle.id} className="bg-surface-card rounded-2xl border border-border-subtle/30 overflow-hidden flex flex-col hover:border-primary-main/30 transition-all">
+             <div key={vehicle.id} className="bg-surface-card rounded-2xl border border-border-subtle/30 overflow-hidden flex flex-col  transition-all">
               <div className="h-1 w-full bg-warning shrink-0" />
               
               {/* Thumbnail */}

@@ -298,7 +298,7 @@ export default function BranchRoster() {
                   fetchStaffTasks(member.id);
                 }}
                 className={cn(
-                  'bg-surface-card rounded-2xl shadow-sm border border-border-subtle hover:shadow-md p-3.5 flex flex-col group transition-all relative overflow-hidden cursor-pointer hover:border-primary-main/30 md:hover:-translate-y-0.5',
+                  'bg-surface-card rounded-2xl shadow-sm border border-border-subtle hover:shadow-md p-3.5 flex flex-col group transition-all relative overflow-hidden cursor-pointer  md:hover:-translate-y-0.5',
                   !member.isOnline && 'opacity-70 bg-bg-secondary/20 border-dashed',
                 )}
               >
@@ -430,7 +430,7 @@ export default function BranchRoster() {
       >
         <form onSubmit={handleSave} className="space-y-8">
           <div className="flex items-center gap-6 p-6 bg-bg-secondary rounded-2xl border border-border-subtle border-dashed">
-            <label className="w-20 h-20 rounded-full bg-surface-card border-2 border-primary-main/10 flex items-center justify-center text-text-muted relative group cursor-pointer hover:border-primary-main transition-all overflow-hidden">
+            <label className="w-20 h-20 rounded-full bg-surface-card border-2 border-primary-main/10 flex items-center justify-center text-text-muted relative group cursor-pointer  transition-all overflow-hidden">
               {avatarPreview ? (
                 <img src={avatarPreview} className="w-full h-full object-cover" />
               ) : (

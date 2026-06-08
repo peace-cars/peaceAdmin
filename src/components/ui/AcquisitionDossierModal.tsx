@@ -236,7 +236,7 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
                     ? "bg-text-main text-bg border-text-main shadow-md" 
                     : stage === 'REJECTED' || stage === 'CLOSED_LOST'
                       ? "bg-error-main/10 text-error-main border-error-main/20 hover:bg-error-main/20"
-                      : "bg-surface-card text-text-secondary border-border-subtle hover:border-primary-main/30 hover:text-primary-main"
+                      : "bg-surface-card text-text-secondary border-border-subtle  hover:text-primary-main"
                 )}
               >
                 {stage.replace(/_/g, ' ')}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
-import { API_URL } from '../lib/api';
+import { api } from '../lib/api';
+import { fetchWithCache } from '../lib/cache';
 import { Building2, CheckCircle, XCircle, Search, Clock, FileText } from 'lucide-react';
-import { unwrapApiResponse } from '../lib/api';
 
 export default function FinanceManager() {
   const { session } = useAuth();
@@ -14,41 +14,25 @@ export default function FinanceManager() {
     fetchPlans();
   }, [session]);
 
-  const fetchPlans = async () => {
+  const fetchPlans = () => {
     if (!session?.access_token) return;
-    try {
-      const res = await fetch(`${API_URL}/finance-plans`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      if (res.ok) {
-        const data = unwrapApiResponse(await res.json());
-        setPlans(Array.isArray(data) ? data : []);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
+    fetchWithCache('/finance-plans', {}, (data) => {
+      setPlans(Array.isArray(data) ? data : []);
       setLoading(false);
-    }
+    }).catch(e => {
+      console.error(e);
+      setLoading(false);
+    });
   };
 
   const updateStatus = async (planId: string, status: string) => {
     if (!session?.access_token) return;
     try {
-      const res = await fetch(`${API_URL}/finance-plans/${planId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ status })
-      });
-      if (res.ok) {
-        fetchPlans(); // Refresh
-      } else {
-        alert("Failed to update status");
-      }
+      await api.patch(`/finance-plans/${planId}/status`, { status });
+      fetchPlans(); // Refresh
     } catch (e) {
       console.error(e);
+      alert("Failed to update status");
     }
   };
 
@@ -79,7 +63,7 @@ export default function FinanceManager() {
 
       {loading ? (
         <div className="flex justify-center p-12">
-          <div className="w-8 h-8 border-4 border-primary-main/20 border-t-primary-main rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-primary-main/20  rounded-full animate-spin" />
         </div>
       ) : (
         <div className="grid gap-4">
@@ -90,7 +74,7 @@ export default function FinanceManager() {
             </div>
           ) : (
             filteredPlans.map(plan => (
-              <div key={plan.id} className="bg-surface rounded-xl border border-divider p-5 flex flex-col md:flex-row gap-6 hover:border-primary-main/30 transition-all">
+              <div key={plan.id} className="bg-surface rounded-xl border border-divider p-5 flex flex-col md:flex-row gap-6  transition-all">
                 <div className="flex-1 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

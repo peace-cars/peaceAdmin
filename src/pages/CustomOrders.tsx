@@ -3,6 +3,7 @@ import { Building2 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
 import { AdminSourcingView } from '../components/dashboard/AdminSourcingView';
+import { fetchWithCache } from '../lib/cache';
 
 export default function CustomOrders() {
   const { session } = useAuth();
@@ -11,41 +12,38 @@ export default function CustomOrders() {
   const [sourcingRequests, setSourcingRequests] = useState<any[]>([]);
   const [branchStaff, setBranchStaff] = useState<any[]>([]);
   const [dmBranches, setDmBranches] = useState<any[]>([]);
-  const [selectedBranch, setSelectedBranch] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!session) return;
     setLoading(true);
 
-    const branchQuery = selectedBranch !== 'ALL' ? `?branchId=${selectedBranch}` : '';
+    let completedRequests = 0;
+    const totalRequests = (role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER') ? 3 : 1;
 
-    const promises: Promise<any>[] = [
-      api.get<any[]>(`/sourcing-requests${branchQuery}`)
-        .then(data => setSourcingRequests(Array.isArray(data) ? data : []))
-        .catch(console.error),
-    ];
+    const checkComplete = () => {
+      completedRequests++;
+      if (completedRequests >= totalRequests) {
+        setLoading(false);
+      }
+    };
+
+    fetchWithCache(`/sourcing-requests`, {}, (data) => {
+      setSourcingRequests(Array.isArray(data) ? data : []);
+    }).catch(console.error).finally(checkComplete);
 
     // DMs and GMs need staff list for assignment
     if (role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER') {
-      promises.push(
-        api.get<any[]>(`/people${branchQuery}`)
-          .then(data => {
-            setBranchStaff(Array.isArray(data) ? data.filter((s: any) => s.isActive) : []);
-          })
-          .catch(console.error)
-      );
+      fetchWithCache(`/people`, {}, (data) => {
+        setBranchStaff(Array.isArray(data) ? data.filter((s: any) => s.isActive) : []);
+      }).catch(console.error).finally(checkComplete);
 
       // GMs and DMs need branch list
-      promises.push(
-        api.get<any[]>('/locations')
-          .then(data => setDmBranches(Array.isArray(data) ? data : []))
-          .catch(console.error)
-      );
+      fetchWithCache('/locations', {}, (data) => {
+        setDmBranches(Array.isArray(data) ? data : []);
+      }).catch(console.error).finally(checkComplete);
     }
-
-    Promise.all(promises).finally(() => setLoading(false));
-  }, [session, role, selectedBranch]);
+  }, [session, role]);
 
 
   const handleAssignSourcingRequest = async (reqId: string, staffId: string) => {
@@ -88,26 +86,19 @@ export default function CustomOrders() {
             </div>
          </div>
          
-         {(role === 'GENERAL_MANAGER' || role === 'DISTRICT_MANAGER') && dmBranches.length > 0 && (
+         {role === 'GENERAL_MANAGER' && localStorage.getItem('admin_selected_branch_name') && localStorage.getItem('admin_selected_branch_name') !== 'ALL BRANCHES' && (
            <div className="flex items-center gap-2">
              <span className="text-[13px] font-medium text-text-muted">Viewing:</span>
-             <select 
-               className="bg-surface-card border border-border-subtle text-[13px] md:text-[14px] font-semibold h-10 px-3 pr-8 rounded-xl text-text-main outline-none focus:border-primary-main/50 appearance-none cursor-pointer shadow-sm transition-all"
-               value={selectedBranch}
-               onChange={(e) => setSelectedBranch(e.target.value)}
-             >
-               <option value="ALL">National Overview</option>
-               {dmBranches.map(b => (
-                 <option key={b.id} value={b.id}>{b.name || b.code}</option>
-               ))}
-             </select>
+             <span className="bg-surface-card border border-border-subtle text-[13px] md:text-[14px] font-semibold h-10 px-4 flex items-center rounded-xl text-text-main shadow-sm">
+               {localStorage.getItem('admin_selected_branch_name')}
+             </span>
            </div>
          )}
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="w-10 h-10 border-4 border-primary-main/20 border-t-primary-main rounded-full animate-spin" />
+          <div className="w-10 h-10 border-4 border-primary-main/20  rounded-full animate-spin" />
           <p className="text-text-muted text-[13px] font-bold uppercase tracking-widest">Syncing Sourcing Hub...</p>
         </div>
       ) : (

@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { Bell, Search, Menu, X, CheckCircle2, Globe, Sun, Moon } from 'lucide-react';
+import { Bell, Search, Menu, Sun, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../lib/ThemeContext';
-import { Tooltip } from './Tooltip';
 import { Badge } from './Badge';
-import { BranchSelector } from './BranchSelector';
 
 interface TopNavProps {
   user: any;
@@ -31,55 +29,70 @@ export const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const unreadCount = notifications.filter(n => !n.isRead).length;
-  const roleLabel = role?.replace(/_/g, ' ') || 'Manager';
-  const initials = user?.full_name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || 'AD';
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [localSearch, setLocalSearch] = useState(searchParams.get('q') || '');
+
+  // Debounce search update
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const newParams = new URLSearchParams(searchParams);
+      if (localSearch) {
+        newParams.set('q', localSearch);
+      } else {
+        newParams.delete('q');
+      }
+      setSearchParams(newParams, { replace: true });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [localSearch, setSearchParams]);
 
   return (
-    <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-border-subtle/30 flex items-center justify-between px-6 sticky top-0 bg-surface-card/70 backdrop-blur-xl z-[100] transition-all">
-      {/* Left: Menu */}
-      <div className="flex items-center gap-4">
+    <header className="h-[calc(4.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-border-subtle/30 flex items-center justify-between px-4 md:px-6 sticky top-0 bg-bg-base z-[100] transition-all gap-3">
+      {/* Left: Menu & Search */}
+      <div className="flex items-center gap-2 flex-1">
         <button 
           onClick={onToggleSidebar}
-          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-hover/50 transition-all active:scale-90 text-text-muted hover:text-text-main group"
+          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-xl hover:bg-surface-hover/50 transition-all active:scale-90 text-text-muted hover:text-text-main group lg:hidden"
         >
           <Menu size={20} className="group-hover:scale-110 transition-transform" />
         </button>
-          <span className="text-[14px] font-black text-text-main tracking-tight leading-none uppercase">
-            {scope?.branchName || 'PeaceCars'}
-          </span>
-      </div>
-
-      {/* Center: Search (desktop only) - Compact button */}
-      <div className="hidden md:flex flex-1 justify-center">
-        <button
-          type="button"
-          className="h-11 w-11 rounded-2xl bg-bg-secondary/30 border border-border-subtle/20 flex items-center justify-center text-text-muted hover:text-text-main hover:bg-bg-secondary/50 transition-all"
-          aria-label="Open global search"
-        >
-          <Search size={16} />
-        </button>
+        
+        <div className="relative group w-full max-w-md">
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/40 group-focus-within:text-primary-main transition-colors"
+            size={16}
+          />
+          <input
+            type="text"
+            placeholder="Search assets..."
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            className="w-full h-11 rounded-[20px] bg-bg-secondary/60 border-none pl-11 pr-4 text-[13px] font-semibold text-text-main shadow-sm transition-all placeholder:text-text-muted/40 focus:bg-surface-card focus:outline-none focus:ring-2 focus:ring-primary-main/20"
+          />
+        </div>
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-2">
-        {role === 'GENERAL_MANAGER' && <BranchSelector />}
-        <div className="flex items-center bg-bg-secondary/30 p-1 rounded-2xl border border-border-subtle/20 mr-2">
+      <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+        <div className="flex items-center gap-1 p-1 rounded-[16px]">
            {/* Theme Toggle */}
            <button 
              onClick={toggleTheme}
-             className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-surface-card transition-all active:scale-95 text-text-muted hover:text-primary-main"
+             className="w-9 h-9 flex items-center justify-center rounded-full bg-bg-secondary/60 hover:bg-surface-card transition-all active:scale-95 text-text-main shadow-sm"
              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
            >
-             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
            </button>
 
-           {/* Language Selector (Simplified) */}
+           {/* Language Selector */}
            <button 
-             className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-surface-card transition-all active:scale-95 text-text-muted hover:text-primary-main font-black text-[10px] uppercase"
+             className="w-9 h-9 flex items-center justify-center rounded-full bg-bg-secondary/60 hover:bg-surface-card transition-all active:scale-95 text-text-main font-black text-[11px] uppercase shadow-sm"
            >
-             {i18n.language}
+             {i18n.language || 'EN'}
            </button>
         </div>
 
@@ -88,15 +101,17 @@ export const TopNav: React.FC<TopNavProps> = ({
           <button 
             onClick={onToggleNotifs} 
             className={clsx(
-              "w-10 h-10 flex items-center justify-center rounded-xl transition-all active:scale-90 border",
+              "w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 shadow-sm relative",
               showNotifs 
-                ? "bg-primary-main/10 border-primary-main/20 text-primary-main shadow-lg shadow-primary-main/10" 
-                : "bg-bg-secondary/30 border-border-subtle/20 text-text-muted hover:text-text-main hover:border-border-subtle/40"
+                ? "bg-primary-main/10 text-primary-main shadow-primary-main/10" 
+                : "bg-bg-secondary/60 text-text-main hover:bg-surface-card"
             )}
           >
             <Bell size={18} />
             {unreadCount > 0 && (
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-surface-card" />
+              <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-[#8B93A5] text-white text-[10px] font-bold rounded-full border-2 border-bg-base">
+                {unreadCount}
+              </span>
             )}
           </button>
           

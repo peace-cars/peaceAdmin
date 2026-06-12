@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
-import { fetchWithCache } from '../lib/cache';
+import { fetchWithCache, apiCache } from '../lib/cache';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -58,7 +58,7 @@ const statusMap: Record<string, string[]> = {
   appraisal: ['INSPECTION_PENDING', 'CLARIFICATION_REQUIRED'],
   review: ['MANAGER_REVIEW'],
   offer: ['OFFER_MADE', 'NEGOTIATING', 'STALE'],
-  acquired: ['ACQUIRED', 'RECONDITIONING'],
+  acquired: ['ACCEPTED', 'RECONDITIONING'],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function getStatusColor(status: string): string {
     case 'OFFER_MADE': return 'bg-success';
     case 'NEGOTIATING': return 'bg-primary-main/80';
     case 'STALE': return 'bg-text-muted';
-    case 'ACQUIRED': return 'bg-text-main';
+    case 'ACCEPTED': return 'bg-text-main';
     case 'RECONDITIONING': return 'bg-accent/60';
     case 'CLOSED_LOST': return 'bg-error-main';
     case 'REJECTED': return 'bg-error-main/80';
@@ -447,6 +447,7 @@ const Acquisitions = () => {
   const [printReportOpen, setPrintReportOpen] = useState(false);
   const [viewReportOpen, setViewReportOpen] = useState(false);
   const [branchStaff, setBranchStaff] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchStaff = () => {
     fetchWithCache('/people', {}, (data) => {
@@ -456,8 +457,9 @@ const Acquisitions = () => {
     }).catch((err) => console.error('[Acquisitions] Fetch Staff Failed', err));
   };
 
-  const fetchLeads = () => {
-    fetchWithCache('/trade-in-requests', {}, (allLeads) => {
+  const fetchLeads = (bypassCache = false) => {
+    const endpoint = bypassCache ? `/trade-in-requests?_t=${Date.now()}` : '/trade-in-requests';
+    fetchWithCache(endpoint, {}, (allLeads) => {
       const newCols = initialColumns.map((col) => ({
         ...col,
         items: (Array.isArray(allLeads) ? allLeads : [])
@@ -482,6 +484,7 @@ const Acquisitions = () => {
 
   const assignStaff = async (tradeInId: string, staffId: string) => {
     if (!staffId) return;
+    setIsSubmitting(true);
     try {
       await api.post('/staff-tasks', {
         assigned_to: staffId,
@@ -493,57 +496,76 @@ const Acquisitions = () => {
       await api.patch(`/trade-in-requests/${tradeInId}/status`, {
         status: 'INSPECTION_PENDING',
       });
-      fetchLeads();
+      apiCache.clear();
+      fetchLeads(true);
       if (selectedLead?.id === tradeInId) setSelectedLead(null);
       alert('Staff assigned for technical evaluation.');
     } catch (err) {
       console.error('[Acquisitions] Assignment Failed', err);
       alert('Assignment failed.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const updateStatus = async (leadId: string, newStatus: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${leadId}/status`, { status: newStatus });
-      fetchLeads();
+      apiCache.clear();
+      fetchLeads(true);
       setSelectedLead(null);
     } catch (err) {
       console.error('[Acquisitions] Update Failed', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleApprove = async (id: string, price: number) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/approve`, { offerPrice: price });
-      fetchLeads();
+      apiCache.clear();
+      fetchLeads(true);
       setSelectedLead(null);
       setViewReportOpen(false);
     } catch (err) {
       console.error('[Acquisitions] Approve Failed', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleReject = async (id: string, reason: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/reject`, { reason });
-      fetchLeads();
+      apiCache.clear();
+      fetchLeads(true);
       setSelectedLead(null);
       setViewReportOpen(false);
     } catch (err) {
       console.error('[Acquisitions] Reject Failed', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleClarification = async (id: string, _reason: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/status`, {
         status: 'CLARIFICATION_REQUIRED',
       });
-      fetchLeads();
+      apiCache.clear();
+      fetchLeads(true);
       setSelectedLead(null);
       setViewReportOpen(false);
     } catch (err) {
       console.error('[Acquisitions] Clarification Failed', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -700,6 +722,8 @@ const Acquisitions = () => {
         onPrint={() => setPrintReportOpen(true)}
         onViewReport={() => setViewReportOpen(true)}
         onUpdateStatus={updateStatus}
+        onRefresh={() => fetchLeads(true)}
+        isSubmitting={isSubmitting}
       />
 
       {/* ─── PRINT DOCUMENT VIEWER ─── */}
@@ -757,6 +781,7 @@ const Acquisitions = () => {
         onApprove={handleApprove}
         onReject={handleReject}
         onRequestClarification={handleClarification}
+        isSubmitting={isSubmitting}
       />
     </div>
   );

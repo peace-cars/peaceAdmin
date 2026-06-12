@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
-import { unwrapApiResponse } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { Bell, CheckCircle2, Trash2, Calendar, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
@@ -14,13 +14,8 @@ const Notifications: React.FC = () => {
     if (!session?.access_token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/notifications`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      if (res.ok) {
-        const data = unwrapApiResponse(await res.json());
-        setNotifications(Array.isArray(data) ? data : []);
-      }
+      const data = await apiFetch<any[]>('/notifications');
+      setNotifications(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error('Notifications Sync Failed', e);
     } finally {
@@ -34,15 +29,15 @@ const Notifications: React.FC = () => {
 
   const markAllRead = async () => {
     if (!session?.user?.id || !session?.access_token) return;
-    await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/notifications/mark-all-read`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ recipientId: session.user.id }),
-    });
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    try {
+      await apiFetch('/notifications/mark-all-read', {
+        method: 'POST',
+        body: JSON.stringify({ recipientId: session.user.id }),
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const deleteNotif = (id: string) => {

@@ -10,7 +10,7 @@ import {
   TrendingUp,
   Star,
 } from 'lucide-react';
-import { unwrapApiResponse } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { SectionCard } from '../components/ui/SectionCard';
 import { Button } from '../components/ui/Button';
@@ -26,13 +26,7 @@ export default function StaffReports() {
     if (!session) return;
     const fetchMetrics = async () => {
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/staff-performance/leaderboard`,
-          {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-          },
-        );
-        const data = unwrapApiResponse(await res.json());
+        const data = await apiFetch<any[]>('/staff-performance/leaderboard');
         setPersonnelMetrics(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);

@@ -279,7 +279,20 @@ const SoldArchive = () => {
   const navigate = useNavigate();
   const _cachedVehicles = apiCache.get('/vehicles_GET_""');
   const [archive, setArchive] = useState<any[]>(
-    _cachedVehicles ? _cachedVehicles.filter((v: any) => v.status === 'SOLD') : [],
+    _cachedVehicles ? _cachedVehicles.filter((v: any) => v.status === 'SOLD').map((v: any) => ({
+          id: v.id,
+          name: `${v.year} ${v.make} ${v.model}`,
+          price: Number(v.retail_price_etb) || 0,
+          unitCost: Number(v.unit_cost) || 0,
+          profit: (Number(v.retail_price_etb) || 0) - (Number(v.unit_cost) || 0),
+          soldDate: v.sold_date ? new Date(v.sold_date).toLocaleDateString() : 'Unknown',
+          branchName: v.branches?.name || 'Main Registry',
+          image:
+            (v.images && v.images.length > 0 ? v.images[0] : null) ||
+            v.first_image_url ||
+            'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=2000&auto=format&fit=crop',
+          plate: v.plate_code || v.plate_number || 'No Plate',
+        })) : [],
   );
   const [loading, setLoading] = useState(!_cachedVehicles);
 

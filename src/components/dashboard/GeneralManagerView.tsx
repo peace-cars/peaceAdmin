@@ -17,11 +17,13 @@ interface GeneralManagerViewProps {
   dmBranches?: any[];
   budgets?: any[];
   branchStaff?: any[];
+  selectedBranchId?: string;
   onUpdateExchangeRate: () => void;
   onApproveListing: (id: string, price: number) => void;
   onApprove: (id: string, price: number) => void;
   onReject: (id: string, reason: string) => void;
   onViewReport: (lead: any) => void;
+  isSubmitting?: boolean;
 }
 
 export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
@@ -35,13 +37,19 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
   dmBranches = [],
   budgets = [],
   branchStaff = [],
+  selectedBranchId = 'ALL',
   onUpdateExchangeRate,
   onApproveListing,
   onApprove,
   onReject,
-  onViewReport
+  onViewReport,
+  isSubmitting
 }) => {
-  const escalatedLeads = tradeIns.filter(t => t.status === 'ESCALATED_TO_GM' || t.status === 'MANAGER_REVIEW');
+  // Filter by branch when a specific branch is selected
+  const branchFilteredLeads = selectedBranchId === 'ALL'
+    ? tradeIns
+    : tradeIns.filter(t => t.branch_id === selectedBranchId || t.locationId === selectedBranchId);
+  const escalatedLeads = branchFilteredLeads.filter(t => t.status === 'ESCALATED_TO_GM' || t.status === 'MANAGER_REVIEW');
 
   if (loadingMetrics) {
     return (
@@ -51,17 +59,6 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
           <SkeletonKpi className="h-28" />
           <SkeletonKpi className="h-28" />
           <SkeletonKpi className="h-28" />
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Map size={16} className="text-primary-main" />
-            <h2 className="text-[15px] font-semibold text-text-main">National Overview</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
         </div>
       </div>
     );
@@ -108,90 +105,7 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
         </div>
       </div>
       
-      {/* District/Branch Overview */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Map size={16} className="text-primary-main" />
-            <h2 className="text-[15px] font-semibold text-text-main">
-              {districtOverview.length === 1 ? `${districtOverview[0].district_name} Overview` : 'National Overview'}
-            </h2>
-          </div>
-          <Badge variant="primary">Live</Badge>
-        </div>
 
-        {districtOverview.length === 0 ? (
-          <div className="bg-surface-card rounded-2xl border border-border-subtle border-dashed py-12 text-center flex flex-col items-center gap-3">
-            <Database className="text-text-muted opacity-20" size={28} />
-            <p className="text-[14px] text-text-muted">Hierarchy data loading...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {districtOverview.map((district) => (
-              <div key={district.district_id} className="bg-surface-card rounded-2xl border border-border-subtle/30 overflow-hidden  transition-all">
-                <div className="p-4 border-b border-border-subtle/30 flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin size={14} className="text-primary-main" />
-                      <h3 className="font-semibold text-text-main text-[15px]">{district.district_name}</h3>
-                    </div>
-                    <p className="text-[13px] text-text-muted flex items-center gap-1.5">
-                      <Shield size={12} /> DM: {district.dm_name || 'Unassigned'}
-                    </p>
-                  </div>
-                  <div className="w-9 h-9 rounded-xl bg-bg-secondary flex items-center justify-center text-[14px] font-bold text-text-main">
-                    {district.total_branches}
-                  </div>
-                </div>
-                
-                <div className="p-4 grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[13px] text-text-muted">Staff</p>
-                    <p className="text-lg font-bold text-text-main flex items-center gap-1.5">
-                      {district.total_staff} <Users size={14} className="text-text-muted" />
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[13px] text-text-muted">Vehicles</p>
-                    <p className="text-lg font-bold text-text-main flex items-center gap-1.5">
-                      {district.total_vehicles} <CarFront size={14} className="text-text-muted" />
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="px-4 py-3 bg-bg-secondary border-t border-border-subtle/30 flex justify-between items-center">
-                  <span className="text-[13px] text-text-muted">Total Value</span>
-                  <span className="text-[14px] font-semibold text-text-main">
-                    {Number(district.total_value_etb).toLocaleString()} <span className="text-[12px] text-primary-main">ETB</span>
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Regional Branches Oversight */}
-      {districtOverview.length !== 1 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 px-1">
-            <Building2 size={16} className="text-primary-main" />
-            <h2 className="text-[15px] font-semibold text-text-main">Regional Branches</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {dmBranches.map(branch => (
-              <div
-                key={branch.id}
-                className="bg-surface-card border border-border-subtle/30 rounded-2xl p-4 flex flex-col items-start gap-1 text-left transition-all w-full"
-              >
-                <Building2 size={16} className="text-text-muted transition-colors mb-1" />
-                <p className="text-[13px] font-bold text-text-main leading-tight truncate w-full">{branch.name}</p>
-                <p className="text-[11px] text-text-muted uppercase tracking-wider">{branch.code || 'BRANCH'}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       
       {/* Escalated Pipeline */}
       <div className="space-y-3">
@@ -263,6 +177,7 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
                   <Button 
                     variant="primary"
                     size="sm"
+                    disabled={isSubmitting}
                     onClick={() => {
                       const price = prompt('Final Approved Offer (ETB):', (vehicle.price || vehicle.user_asking_price_etb || vehicle.askingPrice || 0).toString());
                       if (price) onApprove(vehicle.id, Number(price));
@@ -274,6 +189,7 @@ export const GeneralManagerView: React.FC<GeneralManagerViewProps> = ({
                   <Button 
                     variant="outline"
                     size="sm"
+                    disabled={isSubmitting}
                     onClick={() => {
                       const reason = prompt('Reason for rejection:');
                       if (reason) onReject(vehicle.id, reason);

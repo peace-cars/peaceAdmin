@@ -20,6 +20,7 @@ interface DistrictManagerViewProps {
   onReject: (tradeInId: string, reason: string) => void;
   onViewReport: (lead: any) => void;
   onEscalate: (tradeInId: string) => void;
+  isSubmitting?: boolean;
 }
 
 export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
@@ -36,7 +37,8 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
   onApprove,
   onReject,
   onViewReport,
-  onEscalate
+  onEscalate,
+  isSubmitting
 }) => {
   const [activeTab, setActiveTab] = React.useState('Authorization Pending');
 
@@ -196,9 +198,10 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
                       {item.status === 'NEW_LEAD' && (
                         <div onClick={e => e.stopPropagation()} className="flex-1">
                           <select
-                            className="bg-primary-main/10 text-primary-main text-[11px] font-semibold h-7 px-2 rounded-lg outline-none appearance-none cursor-pointer"
+                            className="bg-primary-main/10 text-primary-main text-[11px] font-semibold h-7 px-2 rounded-lg outline-none appearance-none cursor-pointer disabled:opacity-50"
                             onChange={(e) => onAssignTask(item.id, e.target.value)}
                             defaultValue=""
+                            disabled={isSubmitting}
                           >
                             <option value="" disabled>Assign</option>
                             {assignableStaff.map(s => <option key={s.id} value={s.id}>{s.full_name || s.fullName}</option>)}
@@ -208,14 +211,16 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
                       {item.status === 'MANAGER_REVIEW' && (
                         <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                           <button
-                            className="text-[11px] font-semibold px-2.5 h-7 bg-primary-main text-white rounded-lg active:scale-95 transition-all"
+                            className="text-[11px] font-semibold px-2.5 h-7 bg-primary-main text-white rounded-lg active:scale-95 transition-all disabled:opacity-50"
+                            disabled={isSubmitting}
                             onClick={() => {
                               const price = prompt('Final Dealer Offer (ETB):', item.user_asking_price_etb || item.askingPrice || 0);
                               if (price) onApprove(item.id, Number(price));
                             }}
                           >Approve</button>
                           <button
-                            className="text-[11px] font-semibold px-2.5 h-7 bg-error-main/10 text-error-main rounded-lg active:scale-95 transition-all"
+                            className="text-[11px] font-semibold px-2.5 h-7 bg-error-main/10 text-error-main rounded-lg active:scale-95 transition-all disabled:opacity-50"
+                            disabled={isSubmitting}
                             onClick={() => {
                               const reason = prompt('Reason for rejection:');
                               if (reason) onReject(item.id, reason);
@@ -299,9 +304,10 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
                     {item.status === 'NEW_LEAD' && (
                       <div onClick={e => e.stopPropagation()}>
                         <select
-                          className="w-full bg-bg-secondary border border-border-subtle/30 text-[14px] h-11 px-4 rounded-xl text-text-main outline-none focus:border-primary-main/30 appearance-none cursor-pointer"
+                          className="w-full bg-bg-secondary border border-border-subtle/30 text-[14px] h-11 px-4 rounded-xl text-text-main outline-none focus:border-primary-main/30 appearance-none cursor-pointer disabled:opacity-50"
                           onChange={(e) => onAssignTask(item.id, e.target.value)}
                           defaultValue=""
+                          disabled={isSubmitting}
                         >
                           <option value="" disabled>Assign staff...</option>
                           {assignableStaff.map(s => <option key={s.id} value={s.id}>{s.full_name || s.fullName}</option>)}
@@ -310,7 +316,7 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
                     )}
                     {item.status === 'MANAGER_REVIEW' && (
                       <div className="flex flex-col gap-2" onClick={e => e.stopPropagation()}>
-                        <Button variant="primary" className="w-full"
+                        <Button variant="primary" className="w-full" disabled={isSubmitting} loading={isSubmitting}
                           onClick={() => {
                             const price = prompt('Final Dealer Offer (ETB):', item.user_asking_price_etb || item.askingPrice || 0);
                             if (price) onApprove(item.id, Number(price));
@@ -318,8 +324,8 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
                           Approve & Offer
                         </Button>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" className="flex-1 border-warning/30 text-warning hover:bg-warning/10" onClick={() => onEscalate(item.id)}>Escalate</Button>
-                          <Button variant="outline" size="sm" className="flex-1 border-error-main/30 text-error-main hover:bg-error-main/10"
+                          <Button variant="outline" size="sm" className="flex-1 border-warning/30 text-warning hover:bg-warning/10" disabled={isSubmitting} loading={isSubmitting} onClick={() => onEscalate(item.id)}>Escalate</Button>
+                          <Button variant="outline" size="sm" className="flex-1 border-error-main/30 text-error-main hover:bg-error-main/10" disabled={isSubmitting} loading={isSubmitting}
                             onClick={() => { const reason = prompt('Reason for rejection:'); if (reason) onReject(item.id, reason); }}>
                             Reject
                           </Button>

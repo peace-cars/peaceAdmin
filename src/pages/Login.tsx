@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../lib/auth';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 import logo from '../assets/logo.png';
 import { useTheme } from '../lib/ThemeContext';
@@ -23,6 +24,7 @@ export default function Login() {
   const { login, register } = useAuth();
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -53,7 +55,7 @@ export default function Login() {
           return;
         }
       }
-      window.location.href = '/';
+      navigate('/');
     } catch (err) {
       setErrorMsg("Unable to connect to the authentication server.");
       setLoading(false);

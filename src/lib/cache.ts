@@ -8,9 +8,9 @@ interface CacheItem {
 const cacheStore: Record<string, CacheItem> = {};
 
 export const apiCache = {
-  get: (key: string, ttl: number = 30000): any | null => {
+  get: (key: string): any | null => {
     const item = cacheStore[key];
-    if (item && Date.now() - item.timestamp < ttl) {
+    if (item) {
       return item.data;
     }
     return null;
@@ -24,8 +24,12 @@ export const apiCache = {
   clear: (key?: string): void => {
     if (key) {
       delete cacheStore[key];
+      // Optional: remove specific localStorage key if known, but usually we clear all
     } else {
       Object.keys(cacheStore).forEach(k => delete cacheStore[k]);
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('peace_cache_'))
+        .forEach(k => localStorage.removeItem(k));
     }
   }
 };
@@ -46,7 +50,28 @@ export async function fetchWithCache(
   const cacheKey = `${endpoint}_${options.method || 'GET'}_${JSON.stringify(options.body || '')}_${selectedBranch}`;
 
   // 1. Get cached state
-  const cached = apiCache.get(cacheKey, ttl);
+  let cachedEntry = cacheStore[cacheKey];
+
+  // 1.5 Fallback to persistent localStorage cache from api.ts
+  if (!cachedEntry && (!options.method || options.method === 'GET')) {
+    let finalEndpoint = endpoint;
+    if (selectedBranch && selectedBranch.toUpperCase() !== 'ALL' && !endpoint.startsWith('/locations')) {
+      const separator = finalEndpoint.includes('?') ? '&' : '?';
+      finalEndpoint = `${finalEndpoint}${separator}branchId=${selectedBranch}`;
+    }
+    const apiCacheKey = 'peace_cache_' + btoa(finalEndpoint);
+    try {
+      const local = localStorage.getItem(apiCacheKey);
+      if (local) {
+        const parsed = JSON.parse(local);
+        cachedEntry = { data: parsed.data, timestamp: parsed.timestamp || 0 };
+        apiCache.set(cacheKey, parsed.data); // warm up in-memory cache
+      }
+    } catch(e) {}
+  }
+
+  const cached = cachedEntry ? cachedEntry.data : null;
+
   if (cached !== null) {
     onData(cached);
   }

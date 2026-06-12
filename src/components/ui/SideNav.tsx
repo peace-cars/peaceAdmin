@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../lib/ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { usePwaInstall } from '../../../hooks/usePwaInstall';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 import logo from '../../assets/logo.png';
 

@@ -71,13 +71,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     
     const fetchNotifs = async () => {
       try {
-        const res = await fetch(`${API_URL}/notifications`, {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (res.ok) {
-           const data = unwrapApiResponse(await res.json());
-           if (Array.isArray(data)) setNotifications(data);
-        }
+        const data = await apiFetch<any[]>('/notifications');
+        if (Array.isArray(data)) setNotifications(data);
       } catch (e) {
         console.error("Notifications Sync Failed", e);
       }
@@ -85,14 +80,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
     const fetchScope = async () => {
       try {
-        const res = await fetch(`${API_URL}/locations/my-scope`, {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (res.ok) {
-          const data = unwrapApiResponse(await res.json());
-          setScope(data);
-          if (data.branchName) localStorage.setItem('admin_location', data.branchName);
-        }
+        const data = await apiFetch<any>('/locations/my-scope');
+        setScope(data);
+        if (data.branchName) localStorage.setItem('admin_location', data.branchName);
       } catch (e) {
         console.error("Scope Sync Failed", e);
       }
@@ -117,17 +107,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   const markAllRead = async () => {
     if (!session?.user?.id) return;
-    await fetch(`${API_URL}/notifications/mark-all-read`, {
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-      body: JSON.stringify({ recipientId: session.user.id })
-    });
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    try {
+      await apiFetch('/notifications/mark-all-read', {
+        method: 'POST',
+        body: JSON.stringify({ recipientId: session.user.id })
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    await logout();
+    // Session state is cleared synchronously inside logout(),
+    // so the ProtectedRoute's <Navigate to="/login"> guard fires automatically.
   };
 
   return (

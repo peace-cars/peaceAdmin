@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronRight, Car, Camera, User, Phone, DollarSign, MapPin, Printer, Search } from 'lucide-react';
+import { ChevronRight, Car, Camera, User, Phone, DollarSign, MapPin, Printer, Search, CheckCircle, Loader2, Package } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Badge } from './Badge';
 import { cn } from '../../lib/utils';
+import { api } from '../../lib/api';
 
 interface AcquisitionDossierModalProps {
   selectedLead: any;
@@ -13,6 +14,8 @@ interface AcquisitionDossierModalProps {
   onPrint: () => void;
   onViewReport: () => void;
   onUpdateStatus: (leadId: string, status: string) => void;
+  onRefresh?: () => void;
+  isSubmitting?: boolean;
 }
 
 export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = ({
@@ -22,11 +25,52 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
   onAssignStaff,
   onPrint,
   onViewReport,
-  onUpdateStatus
+  onUpdateStatus,
+  onRefresh,
+  isSubmitting,
 }) => {
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
+  // Acquire to Fleet state
+  const [showAcquireForm, setShowAcquireForm] = useState(false);
+  const [acquiring, setAcquiring] = useState(false);
+  const [acquireForm, setAcquireForm] = useState({
+    vin: '',
+    retailPrice: '',
+    vehicleStatus: 'REFURBISHMENT' as 'REFURBISHMENT' | 'SHOWROOM' | 'SOLD',
+  });
+  const [acquireSuccess, setAcquireSuccess] = useState(false);
+
   if (!selectedLead) return null;
+
+  const isNegotiating = selectedLead.status === 'NEGOTIATING';
+  const isAccepted = selectedLead.status === 'ACCEPTED';
+
+  const handleAcquire = async () => {
+    if (!acquireForm.retailPrice) {
+      alert('Please enter the retail price for the inventory listing.');
+      return;
+    }
+    setAcquiring(true);
+    try {
+      await api.patch(`/trade-in-requests/${selectedLead.id}/acquire`, {
+        vin: acquireForm.vin || undefined,
+        retailPrice: Number(acquireForm.retailPrice.replace(/,/g, '')),
+        vehicleStatus: acquireForm.vehicleStatus,
+      });
+      setAcquireSuccess(true);
+      onRefresh?.();
+      setTimeout(() => {
+        onClose();
+        setAcquireSuccess(false);
+        setShowAcquireForm(false);
+      }, 1800);
+    } catch (e: any) {
+      alert(e?.message || 'Acquisition failed. Please try again.');
+    } finally {
+      setAcquiring(false);
+    }
+  };
 
   return (
     <Modal
@@ -54,7 +98,6 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/photo:opacity-100 transition-opacity" />
               
-              {/* Photo Navigation Overlays */}
               {selectedLead.photos.length > 1 && (
                 <>
                   <button 
@@ -72,7 +115,6 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
                 </>
               )}
 
-              {/* Header Overlay */}
               <div className="absolute bottom-8 left-8">
                 <h3 className="text-3xl font-bold text-white tracking-tight drop-shadow-2xl mb-1">{selectedLead.vehicle}</h3>
                 <Badge variant="default" className="font-mono bg-black/40 text-white border-white/20 px-3 py-1 shadow-sm">
@@ -81,7 +123,6 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
               </div>
             </div>
 
-            {/* Thumbnails Navigation */}
             {selectedLead.photos.length > 1 && (
               <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
                 {selectedLead.photos.map((photo: string, idx: number) => (
@@ -111,6 +152,136 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
           </div>
         )}
 
+        {/* ── Negotiation Alert ── */}
+        {isNegotiating && (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/8 overflow-hidden">
+            <div className="px-5 py-3 bg-amber-500/15 border-b border-amber-500/20 flex items-center gap-2">
+              <span className="text-sm font-black text-amber-600 uppercase tracking-wider">⚡ Counter-Offer Received</span>
+            </div>
+            <div className="px-5 py-4 grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Your Offer</p>
+                <p className="text-xl font-black text-text-main">
+                  {Number(selectedLead.finalOffer || 0).toLocaleString()} <span className="text-xs text-primary-main">ETB</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">Client Counter</p>
+                <p className="text-xl font-black text-amber-600">
+                  {Number(selectedLead.askingPrice || 0).toLocaleString()} <span className="text-xs">ETB</span>
+                </p>
+              </div>
+            </div>
+            <div className="px-5 pb-4">
+              <p className="text-xs text-text-secondary">To accept the counter, set a new offer via <strong>Approve Lead</strong> matching the client's price, or move to <strong>NEGOTIATING</strong> to counter again.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Acquire to Fleet ── */}
+        {isAccepted && (
+          <div className="rounded-2xl border border-success/30 bg-success/5 overflow-hidden">
+            <div className="px-5 py-3 bg-success/10 border-b border-success/20 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-success" />
+                <span className="text-sm font-black text-success uppercase tracking-wider">Deal Accepted by Client</span>
+              </div>
+              <Badge variant="default" className="text-success border-success/30 bg-success/10">
+                {Number(selectedLead.finalOffer || selectedLead.askingPrice || 0).toLocaleString()} ETB
+              </Badge>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              {acquireSuccess ? (
+                <div className="flex items-center gap-3 py-3">
+                  <CheckCircle size={22} className="text-success" />
+                  <p className="font-black text-success">
+                    Vehicle added to fleet! Moving to{' '}
+                    {acquireForm.vehicleStatus === 'REFURBISHMENT' ? 'Reconditioning' : acquireForm.vehicleStatus === 'SHOWROOM' ? 'Showroom' : 'Sold'}...
+                  </p>
+                </div>
+              ) : showAcquireForm ? (
+                <div className="space-y-4">
+                  <p className="text-xs text-text-secondary font-medium">
+                    Choose where this vehicle goes in your fleet after acquisition.
+                  </p>
+
+                  {/* Destination selector */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: 'REFURBISHMENT', label: 'Reconditioning', desc: 'Needs work before listing', icon: '🔧' },
+                      { value: 'SHOWROOM',      label: 'Showroom',        desc: 'Ready to sell now',        icon: '🏪' },
+                      { value: 'SOLD',          label: 'Mark as Sold',    desc: 'Already sold off-market',  icon: '✅' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setAcquireForm(p => ({ ...p, vehicleStatus: opt.value }))}
+                        className={cn(
+                          'flex flex-col items-center text-center gap-1 p-3 rounded-xl border-2 transition-all text-xs font-bold',
+                          acquireForm.vehicleStatus === opt.value
+                            ? 'border-primary-main bg-primary-main/10 text-primary-main'
+                            : 'border-border-subtle text-text-muted hover:border-primary-main/40'
+                        )}
+                      >
+                        <span className="text-xl">{opt.icon}</span>
+                        <span>{opt.label}</span>
+                        <span className="font-normal text-[10px] opacity-70 leading-tight">{opt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider">VIN / Chassis (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="Auto-generated if empty"
+                        value={acquireForm.vin}
+                        onChange={e => setAcquireForm(p => ({ ...p, vin: e.target.value }))}
+                        className="w-full bg-bg-secondary border border-border-subtle rounded-xl px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-primary-main/50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Retail Price (ETB) *</label>
+                      <input
+                        type="number"
+                        placeholder={String(selectedLead.finalOffer || '')}
+                        value={acquireForm.retailPrice}
+                        onChange={e => setAcquireForm(p => ({ ...p, retailPrice: e.target.value }))}
+                        className="w-full bg-bg-secondary border border-border-subtle rounded-xl px-3 py-2.5 text-sm text-text-main focus:outline-none focus:border-primary-main/50"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="primary" className="flex-1 h-10" onClick={handleAcquire}>
+                      {acquiring
+                        ? <><Loader2 size={14} className="animate-spin mr-2" /> Acquiring...</>
+                        : <><Package size={14} className="mr-2" /> Confirm Acquisition</>
+                      }
+                    </Button>
+                    <Button variant="outline" className="h-10 px-4" onClick={() => setShowAcquireForm(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <p className="text-sm text-text-secondary">
+                    Client has accepted the offer. Confirm acquisition to add this vehicle to the showroom fleet.
+                  </p>
+                  <Button
+                    variant="primary"
+                    className="shrink-0 h-10 px-5 shadow-md shadow-primary-main/20"
+                    onClick={() => setShowAcquireForm(true)}
+                  >
+                    <Package size={14} className="mr-2" /> Acquire to Fleet
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Info Grid */}
         <div className="grid grid-cols-2 gap-y-6 gap-x-10">
           <div className="space-y-1.5">
@@ -132,7 +303,6 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
             <p className="text-sm font-bold text-text-main tracking-tight">{selectedLead.location || 'Unassigned'}</p>
           </div>
           
-          {/* Rich Vehicle Details Section */}
           {selectedLead.vehicleDetails && Object.keys(selectedLead.vehicleDetails).length > 0 && (
             <div className="col-span-2 grid grid-cols-3 gap-y-6 gap-x-6 pt-4 border-t border-border-subtle">
               <div className="space-y-1.5">
@@ -188,9 +358,10 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
                <div className="flex items-center gap-3">
                   <div className="relative flex-1">
                     <select 
-                      className="w-full bg-bg-secondary border border-border-subtle text-xs font-medium h-12 px-6 rounded-2xl text-text-main outline-none focus:border-primary-main/30 appearance-none cursor-pointer transition-all pr-12 shadow-sm"
+                      className="w-full bg-bg-secondary border border-border-subtle text-xs font-medium h-12 px-6 rounded-2xl text-text-main outline-none focus:border-primary-main/30 appearance-none cursor-pointer transition-all pr-12 shadow-sm disabled:opacity-50"
                       onChange={(e) => onAssignStaff(selectedLead.id, e.target.value)}
                       defaultValue=""
+                      disabled={isSubmitting}
                     >
                       <option value="" disabled>Select available staff member...</option>
                       {branchStaff.map(s => <option key={s.id} value={s.id}>{s.fullName || s.full_name}</option>)}
@@ -226,17 +397,19 @@ export const AcquisitionDossierModal: React.FC<AcquisitionDossierModalProps> = (
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {['NEW_LEAD', 'INSPECTION_PENDING', 'CLARIFICATION_REQUIRED', 'MANAGER_REVIEW', 'OFFER_MADE', 'NEGOTIATING', 'STALE', 'ACQUIRED', 'RECONDITIONING', 'REJECTED', 'CLOSED_LOST'].map(stage => (
+            {['NEW_LEAD', 'INSPECTION_PENDING', 'CLARIFICATION_REQUIRED', 'MANAGER_REVIEW', 'OFFER_MADE', 'NEGOTIATING', 'ACCEPTED', 'RECONDITIONING', 'STALE', 'REJECTED', 'CLOSED_LOST'].map(stage => (
               <button 
                 key={stage}
                 onClick={() => onUpdateStatus(selectedLead.id, stage)}
+                disabled={isSubmitting}
                 className={cn(
                   "py-2 px-3 rounded-lg text-[11px] font-medium border transition-all active:scale-95 shadow-sm whitespace-nowrap",
                   selectedLead.status === stage 
                     ? "bg-text-main text-bg border-text-main shadow-md" 
                     : stage === 'REJECTED' || stage === 'CLOSED_LOST'
                       ? "bg-error-main/10 text-error-main border-error-main/20 hover:bg-error-main/20"
-                      : "bg-surface-card text-text-secondary border-border-subtle  hover:text-primary-main"
+                      : "bg-surface-card text-text-secondary border-border-subtle hover:text-primary-main",
+                  isSubmitting && "opacity-50 pointer-events-none"
                 )}
               >
                 {stage.replace(/_/g, ' ')}

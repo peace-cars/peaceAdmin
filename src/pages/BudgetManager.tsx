@@ -181,7 +181,7 @@ interface BudgetCardProps {
   onDisburse: () => void;
 }
 
-const BudgetCard: React.FC<BudgetCardProps> = ({ b, role, onReview, onApprove, onDisburse }) => {
+const BudgetCard: React.FC<BudgetCardProps & { isSubmitting?: boolean }> = ({ b, role, onReview, onApprove, onDisburse, isSubmitting }) => {
   const canApprove =
     b.status === 'REQUESTED' && (role === 'DISTRICT_MANAGER' || role === 'GENERAL_MANAGER');
   const canDisburse =
@@ -257,6 +257,8 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ b, role, onReview, onApprove, o
               size="sm"
               className="col-span-1 h-11 rounded-xl text-[12px] font-bold uppercase tracking-wider shadow-md active:scale-95"
               onClick={onApprove}
+              disabled={isSubmitting}
+              loading={isSubmitting}
             >
               Approve
             </Button>
@@ -267,6 +269,8 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ b, role, onReview, onApprove, o
               size="sm"
               className="col-span-1 h-11 rounded-xl text-[12px] font-bold uppercase tracking-wider shadow-md bg-success hover:bg-success/80 text-white active:scale-95"
               onClick={onDisburse}
+              disabled={isSubmitting}
+              loading={isSubmitting}
             >
               Mark Paid
             </Button>
@@ -525,6 +529,7 @@ export default function BudgetManager() {
   const { session } = useAuth();
   const [budgets, setBudgets] = useState<any[]>([]);
   const [selectedBudget, setSelectedBudget] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const role = localStorage.getItem('admin_role');
 
   const fetchBudgets = async () => {
@@ -543,6 +548,7 @@ export default function BudgetManager() {
 
   const approveBudget = async (id: string, amount: number) => {
     if (!session) return;
+    setIsSubmitting(true);
     try {
       await api.patch(`/staff-budgets/${id}/approve`, { amount });
       setBudgets((prev) =>
@@ -552,11 +558,14 @@ export default function BudgetManager() {
       );
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const disburseBudget = async (id: string) => {
     if (!session) return;
+    setIsSubmitting(true);
     try {
       await api.patch(`/staff-budgets/${id}/disburse`, {});
       setBudgets((prev) =>
@@ -564,6 +573,8 @@ export default function BudgetManager() {
       );
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Check,
   Clock,
@@ -10,6 +10,9 @@ import {
   Star,
   FileCheck2,
   Lock,
+  Wallet,
+  Building2,
+  Phone
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
@@ -17,14 +20,14 @@ import { KpiTile } from '../components/ui/KpiTile';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Tooltip } from '../components/ui/Tooltip';
-import { cn } from '../lib/utils';
-
 import { Modal } from '../components/ui/Modal';
+import { cn } from '../lib/utils';
 
 export default function CommissionApproval() {
   const { session } = useAuth();
   const [commissions, setCommissions] = useState<any[]>([]);
   const [selectedCommission, setSelectedCommission] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const role = localStorage.getItem('admin_role');
 
   const fetchCommissions = async () => {
@@ -41,15 +44,19 @@ export default function CommissionApproval() {
   }, [session]);
 
   const dmVerify = async (id: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/commission-workflow/${id}/dm-verify`, {});
       setCommissions((prev) => prev.map((c) => (c.id === id ? { ...c, dmVerified: true } : c)));
     } catch (e) {
       console.error('[Commissions] Verification Failed', e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const gmApprove = async (id: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/commission-workflow/${id}/gm-approve`, {});
       setCommissions((prev) =>
@@ -57,14 +64,9 @@ export default function CommissionApproval() {
       );
     } catch (e) {
       console.error('[Commissions] Approval Failed', e);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  const renderStatusBadge = (c: any) => {
-    if (c.isPaid) return <Badge variant="success">Settled</Badge>;
-    if (c.gmApproved) return <Badge variant="primary">Processing</Badge>;
-    if (c.dmVerified) return <Badge variant="warning">Verified</Badge>;
-    return <Badge variant="default">Review</Badge>;
   };
 
   const pendingPayoutTotal = commissions
@@ -77,350 +79,327 @@ export default function CommissionApproval() {
   const slaCompliance = commissions.length > 0 ? '100%' : 'N/A';
 
   return (
-    <div className="space-y-10 pb-20 animate-fade-in">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        <Tooltip content="Total incentive volume pending verification">
-          <KpiTile
-            label="Pending Payout"
-            value={`${(pendingPayoutTotal / 1000).toFixed(1)}K ETB`}
-            icon={<Clock size={14} />}
-            className="p-6 h-32"
-          />
-        </Tooltip>
-        <Tooltip content="Total disbursements completed this month">
-          <KpiTile
-            label="Settled (MTD)"
-            value={`${(settledMtdTotal / 1000).toFixed(1)}K ETB`}
-            icon={<FileCheck2 size={14} />}
-            className="p-6 h-32"
-            color="emerald"
-          />
-        </Tooltip>
-        <Tooltip content="Total network partners currently in registry">
-          <KpiTile
-            label="Active Partners"
-            value={`${activePartnersCount} Units`}
-            icon={<Users size={14} />}
-            className="p-6 h-32"
-            color="indigo"
-          />
-        </Tooltip>
-        <Tooltip content="Percentage of payouts settled within SLA registry">
-          <KpiTile
-            label="SLA Compliance"
-            value={slaCompliance}
-            icon={<Star size={14} />}
-            className="p-6 h-32"
-            color="indigo"
-          />
-        </Tooltip>
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex flex-col gap-1.5 px-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-bold text-text-main font-semibold">
-              Payout Authorization Pipeline
-            </h2>
-            <div className="flex-grow mx-6 h-px bg-border-subtle/30" />
-          </div>
-          <p className="text-[12px] text-text-muted/60 font-medium">
-            Management authorization stream for partner incentives
+    <div className="space-y-6 md:space-y-8 pb-12">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-text-main tracking-tight">Financial Clearing</h1>
+          <p className="text-[13px] text-text-muted/80 font-medium mt-1">
+            Management authorization stream for partner incentives and payouts.
           </p>
         </div>
-
-        {commissions.length === 0 ? (
-          <div className="py-24 text-center rounded-2xl border border-dashed border-border-subtle bg-surface-card flex flex-col items-center justify-center gap-4">
-            <Lock className="text-text-muted opacity-10" size={48} />
-            <p className="text-text-muted/60 font-medium text-[13px]">
-              No active incentives in registry.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {commissions.map((c) => (
-              <div
-                key={c.id}
-                className={cn(
-                  'bg-surface-card rounded-2xl shadow-sm border border-border-subtle/50 hover:shadow-md hover:-translate-y-0.5 p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 group transition-all  relative overflow-hidden',
-                  c.isPaid &&
-                    'opacity-60 bg-bg-secondary/50 grayscale shadow-none border-dashed pointer-events-none',
-                )}
-              >
-                {/* Swipe-to-action hint gradient for mobile */}
-                <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-indigo-50 to-transparent opacity-0 group-active:opacity-100 transition-opacity pointer-events-none md:hidden" />
-
-                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 hidden md:block">
-                  <Badge variant="primary" className="shadow-lg">
-                    Authorize Settlement
-                  </Badge>
-                </div>
-
-                <div className="flex gap-4 md:gap-6">
-                  <div
-                    className={cn(
-                      'w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center border transition-all shrink-0 shadow-inner',
-                      c.isPaid
-                        ? 'bg-bg-secondary border-border-subtle/30 text-text-muted/30'
-                        : c.dmVerified
-                          ? 'bg-warning/10 border-warning/20 text-warning'
-                          : 'bg-primary-main/10 border-primary-main/20 text-primary-main',
-                    )}
-                  >
-                    <Users size={20} className="md:w-6 md:h-6" />
-                  </div>
-
-                  <div className="space-y-1 md:space-y-2 flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                      <h3 className="text-sm md:text-base font-bold text-text-main tracking-tight leading-tight group-hover:text-primary-main transition-colors truncate">
-                        {c.beneficiaryName || 'Operational Partner'}
-                      </h3>
-                      <div className="shrink-0">
-                        <Tooltip content="Current Authorization Status">
-                          {renderStatusBadge(c)}
-                        </Tooltip>
-                      </div>
-                    </div>
-
-                    {/* Horizontal Scroller for mobile tags */}
-                    <div className="flex overflow-x-auto no-scrollbar gap-2 pt-1 md:pt-0 text-[13px] font-medium text-text-muted opacity-80 pb-1">
-                      <div className="shrink-0 flex items-center">
-                        <Badge variant={c.type === 'BROKER_REFERRAL' ? 'primary' : 'default'}>
-                          {c.type === 'BROKER_REFERRAL' ? 'External Partner' : 'Performance Tier'}
-                        </Badge>
-                      </div>
-                      <div className="shrink-0 flex items-center">
-                        <span className="flex items-center gap-1.5 font-mono bg-bg-secondary px-2 py-1 rounded-md border border-border-subtle/30 text-text-muted/60">
-                          <Activity size={10} /> {new Date(c.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="shrink-0 flex items-center">
-                        <Badge
-                          variant="default"
-                          className="font-mono bg-bg-secondary border-border-subtle/30 text-text-muted/40"
-                        >
-                          ID: {c.id.substring(0, 8).toUpperCase()}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-10 md:border-l border-border-subtle/30 md:pl-10 mt-2 md:mt-0 pt-4 md:pt-0 border-t border-border-subtle/30 md:border-t-0">
-                  <div className="text-left md:text-right shrink-0 flex justify-between md:block items-end">
-                    <div>
-                      <p className="text-[13px] text-text-muted font-medium mb-0.5 md:mb-1.5">
-                        Authorization Sum
-                      </p>
-                      <p className="text-2xl font-bold text-primary-main md:text-text-main tracking-tight leading-none">
-                        {Number(c.amountEtb).toLocaleString()}
-                        <span className="text-[13px] md:text-[11px] font-bold ml-1.5 uppercase opacity-80">
-                          ETB
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:flex items-center gap-3 w-full md:w-auto">
-                    {!c.dmVerified && role === 'DISTRICT_MANAGER' && (
-                      <Button
-                        variant="primary"
-                        className="col-span-1 bg-warning text-bg hover:bg-warning/90 h-12 md:h-11 px-6 shadow-md rounded-xl text-[13px] md:text-[11px] font-bold"
-                        onClick={() => dmVerify(c.id)}
-                      >
-                        Verify
-                      </Button>
-                    )}
-                    {c.dmVerified &&
-                      !c.gmApproved &&
-                      (role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR') && (
-                        <Button
-                          variant="primary"
-                          className="col-span-1 h-12 md:h-11 px-6 shadow-xl rounded-xl text-[13px] md:text-[11px] font-bold bg-text-main text-bg"
-                          onClick={() => gmApprove(c.id)}
-                        >
-                          Settle
-                        </Button>
-                      )}
-
-                    <button
-                      onClick={() => setSelectedCommission(c)}
-                      className={cn(
-                        'h-12 md:h-11 flex items-center justify-center rounded-xl bg-bg-secondary border border-border-subtle/30 text-text-muted hover:text-primary-main hover:bg-surface-card transition-all shadow-sm active:scale-95',
-                        (!c.dmVerified && role === 'DISTRICT_MANAGER') ||
-                          (c.dmVerified &&
-                            !c.gmApproved &&
-                            (role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR'))
-                          ? 'col-span-1 w-full md:w-11'
-                          : 'col-span-2 w-full md:w-11',
-                      )}
-                    >
-                      <span className="md:hidden font-medium text-[13px] flex items-center gap-2">
-                        Details <ArrowUpRight size={14} />
-                      </span>
-                      <ArrowUpRight size={18} className="hidden md:block" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      <div className="bg-surface-card border border-border-subtle/30 p-10 rounded-2xl shadow-sm flex items-center justify-between relative overflow-hidden group">
-        <div className="flex items-center gap-16 relative z-10">
-          <div className="space-y-1.5">
-            <p className="text-[13px] font-bold text-text-muted/40 uppercase tracking-tight">
-              Total Ledger Disbursements
-            </p>
-            <p className="text-2xl font-bold text-text-main tracking-tight leading-none">
-              {(settledMtdTotal / 1000).toFixed(1)}K{' '}
-              <span className="text-[11px] text-primary-main font-bold ml-1.5">ETB</span>
-            </p>
-          </div>
-          <div className="w-px h-12 bg-border-subtle/30" />
-          <div className="space-y-1.5">
-            <p className="text-[13px] font-bold text-text-muted/40 uppercase tracking-tight">
-              Verification Protocol
-            </p>
-            <p className="text-2xl font-bold text-text-main tracking-tight leading-none">
-              Verified{' '}
-              <span className="text-[11px] text-success font-bold ml-2 font-medium">Active</span>
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-6 text-primary-main/5 opacity-40 group-hover:opacity-100 transition-all">
-          <ShieldCheck size={32} />
-          <Users size={32} />
-          <DollarSign size={32} />
-          <Star size={32} />
-        </div>
-      </div>
+      {/* KPIs */}
+      <MobileKpis
+        pendingPayoutTotal={pendingPayoutTotal}
+        settledMtdTotal={settledMtdTotal}
+        activePartnersCount={activePartnersCount}
+        slaCompliance={slaCompliance}
+      />
+
+      {/* Main Content */}
+      <DesktopTable 
+        commissions={commissions} 
+        role={role}
+        onSelect={setSelectedCommission}
+        onVerify={dmVerify}
+        onApprove={gmApprove}
+        isSubmitting={isSubmitting}
+      />
+      <MobileGrid 
+        commissions={commissions}
+        role={role}
+        onSelect={setSelectedCommission}
+        onVerify={dmVerify}
+        onApprove={gmApprove}
+        isSubmitting={isSubmitting}
+      />
 
       {/* Commission Detail Modal */}
-      <Modal
-        isOpen={!!selectedCommission}
-        onClose={() => setSelectedCommission(null)}
-        title="Commission Distribution Profile"
-        subtitle={`Reference: ${selectedCommission?.id?.substring(0, 12).toUpperCase() || 'N/A'}`}
-        maxWidth="max-w-2xl"
-      >
-        {selectedCommission && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between p-6 bg-bg-secondary rounded-2xl border border-border-subtle/30">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-surface-card rounded-xl shadow-sm border border-border-subtle/30 flex items-center justify-center text-primary-main">
-                  <Users size={24} />
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-text-main tracking-tight">
-                    {selectedCommission.beneficiaryName}
-                  </p>
-                  <p className="text-[13px] font-bold text-text-muted/60">
-                    {selectedCommission.beneficiaryRole?.replace(/_/g, ' ')}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[13px] font-bold text-text-muted/40 mb-1">Approved Payout</p>
-                <p className="text-2xl font-bold text-text-main tracking-tight">
-                  {Number(selectedCommission.amountEtb).toLocaleString()}{' '}
-                  <span className="text-[13px] text-primary-main font-mono">ETB</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="text-[13px] font-bold text-text-muted/40 uppercase tracking-wider">
-                Approval Timeline
-              </h4>
-              <div className="space-y-0 pl-4 border-l-2 border-border-subtle/30 ml-2">
-                <div className="relative pl-6 pb-6">
-                  <div className="absolute w-3 h-3 bg-primary-main rounded-full -left-[7px] top-1 shadow-md border-2 border-surface-card" />
-                  <p className="text-sm font-bold text-text-main leading-none">Commission Logged</p>
-                  <p className="text-[13px] text-text-muted/60 mt-1">
-                    {new Date(selectedCommission.createdAt).toLocaleString()}
-                  </p>
-                </div>
-                <div
-                  className={cn(
-                    'relative pl-6 pb-6',
-                    !selectedCommission.dmVerified && 'opacity-40',
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'absolute w-3 h-3 rounded-full -left-[7px] top-1 shadow-md border-2 border-surface-card',
-                      selectedCommission.dmVerified ? 'bg-warning' : 'bg-border-subtle/50',
-                    )}
-                  />
-                  <p className="text-sm font-bold text-text-main leading-none">
-                    District Manager Verification
-                  </p>
-                  <p className="text-[13px] text-text-muted/60 mt-1">
-                    {selectedCommission.dmVerified ? 'Verified locally' : 'Pending DM Review'}
-                  </p>
-                </div>
-                <div
-                  className={cn(
-                    'relative pl-6',
-                    !selectedCommission.gmApproved && !selectedCommission.isPaid && 'opacity-40',
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'absolute w-3 h-3 rounded-full -left-[7px] top-1 shadow-md border-2 border-surface-card',
-                      selectedCommission.isPaid ? 'bg-success' : 'bg-border-subtle/50',
-                    )}
-                  />
-                  <p className="text-sm font-bold text-text-main leading-none">
-                    Final Audit & Settlement
-                  </p>
-                  <p className="text-[13px] text-text-muted/60 mt-1">
-                    {selectedCommission.isPaid ? 'Funds Disbursed' : 'Pending Finance Approval'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="pt-6 border-t border-border-subtle/30 flex justify-end gap-3">
-              <Button
-                variant="outline"
-                className="h-11 rounded-xl text-[13px] font-bold"
-                onClick={() => setSelectedCommission(null)}
-              >
-                Close Profile
-              </Button>
-              {!selectedCommission.dmVerified && role === 'DISTRICT_MANAGER' && (
-                <Button
-                  variant="primary"
-                  className="h-11 rounded-xl text-[13px] font-bold bg-warning text-bg"
-                  onClick={() => {
-                    dmVerify(selectedCommission.id);
-                    setSelectedCommission(null);
-                  }}
-                >
-                  Verify Payout
-                </Button>
-              )}
-              {selectedCommission.dmVerified &&
-                !selectedCommission.gmApproved &&
-                (role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR') && (
-                  <Button
-                    variant="primary"
-                    className="h-11 rounded-xl text-[13px] font-bold bg-text-main text-bg"
-                    onClick={() => {
-                      gmApprove(selectedCommission.id);
-                      setSelectedCommission(null);
-                    }}
-                  >
-                    Settle Incentive
-                  </Button>
-                )}
-            </div>
-          </div>
-        )}
-      </Modal>
+      <CommissionModal 
+        isOpen={!!selectedCommission} 
+        onClose={() => setSelectedCommission(null)} 
+        commission={selectedCommission} 
+        role={role}
+        onVerify={() => { dmVerify(selectedCommission?.id); setSelectedCommission(null); }}
+        onApprove={() => { gmApprove(selectedCommission?.id); setSelectedCommission(null); }}
+      />
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUB-COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const StatusBadge = ({ c }: { c: any }) => {
+  if (c.isPaid) return <Badge variant="success" className="text-[10px] uppercase font-bold border shadow-sm">Settled</Badge>;
+  if (c.gmApproved) return <Badge variant="primary" className="text-[10px] uppercase font-bold border shadow-sm">Processing</Badge>;
+  if (c.dmVerified) return <Badge variant="warning" className="text-[10px] uppercase font-bold border shadow-sm">Verified</Badge>;
+  return <Badge variant="default" className="text-[10px] uppercase font-bold border shadow-sm bg-bg-secondary text-text-muted">Review</Badge>;
+};
+
+const MobileKpis = ({ pendingPayoutTotal, settledMtdTotal, activePartnersCount, slaCompliance }: any) => (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+    <Tooltip content="Total incentive volume pending verification">
+      <KpiTile label="Pending Payout" value={`${(pendingPayoutTotal / 1000).toFixed(1)}K`} icon={<Clock size={14} />} className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+    </Tooltip>
+    <Tooltip content="Total disbursements completed this month">
+      <KpiTile label="Settled (MTD)" value={`${(settledMtdTotal / 1000).toFixed(1)}K`} icon={<FileCheck2 size={14} />} color="emerald" className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+    </Tooltip>
+    <Tooltip content="Total network partners currently in registry">
+      <KpiTile label="Active Partners" value={activePartnersCount} icon={<Users size={14} />} color="indigo" className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+    </Tooltip>
+    <Tooltip content="Percentage of payouts settled within SLA registry">
+      <KpiTile label="SLA Compliance" value={slaCompliance} icon={<Star size={14} />} color="indigo" className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+    </Tooltip>
+  </div>
+);
+
+const DesktopTable = ({ commissions, role, onSelect, onVerify, onApprove, isSubmitting }: any) => {
+  if (commissions.length === 0) {
+    return (
+      <div className="hidden md:flex py-24 text-center rounded-2xl border border-dashed border-border-subtle bg-surface-card flex-col items-center justify-center gap-4">
+        <Lock className="text-text-muted opacity-10" size={48} />
+        <p className="text-text-muted/60 font-medium text-[13px]">
+          No active incentives in registry.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-surface-card rounded-[24px] shadow-sm border border-border-subtle/30 p-2 hidden md:block">
+      <div className="flex flex-col gap-1.5 p-6 border-b border-border-subtle/30">
+        <h2 className="text-[14px] font-black text-text-main">Authorization Pipeline</h2>
+        <p className="text-[12px] text-text-muted/60 font-medium">Management authorization stream for partner incentives</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-separate border-spacing-y-2 px-4">
+          <thead>
+            <tr className="text-text-muted font-medium text-[12px] uppercase tracking-wider">
+              <th className="pb-4 pt-6 px-4">Beneficiary</th>
+              <th className="pb-4 pt-6 px-4">Type</th>
+              <th className="pb-4 pt-6 px-4">Amount (ETB)</th>
+              <th className="pb-4 pt-6 px-4 text-center">Status</th>
+              <th className="pb-4 pt-6 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {commissions.map((c: any) => (
+              <tr key={c.id} className={cn("group transition-all", c.isPaid && 'opacity-60 grayscale-[0.3]')}>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-l border-border-subtle/30 rounded-l-2xl group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className={cn("w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 shadow-inner", c.isPaid ? 'bg-bg-base border border-border-subtle text-text-muted/60' : c.dmVerified ? 'bg-warning/10 border border-warning/20 text-warning' : 'bg-primary-main/10 border border-primary-main/20 text-primary-main')}>
+                      <Users size={16} />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-text-main font-bold text-[14px] tracking-tight leading-tight group-hover:text-primary-main transition-colors">
+                        {c.beneficiaryName || 'Operational Partner'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] text-text-muted font-mono bg-bg-secondary px-2 py-0.5 rounded-md w-fit border border-border-subtle/30 uppercase">
+                          ID: {c.id.substring(0, 8)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  <div className="space-y-1">
+                    <Badge variant={c.type === 'BROKER_REFERRAL' ? 'primary' : 'default'} className="text-[10px] uppercase font-bold border shadow-sm">
+                      {c.type === 'BROKER_REFERRAL' ? 'External Partner' : 'Performance Tier'}
+                    </Badge>
+                    <p className="text-[11px] text-text-muted/80 font-medium flex items-center gap-1.5 mt-1">
+                      <Activity size={10} /> {new Date(c.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  <p className="text-lg font-black text-text-main font-mono tracking-tight">{Number(c.amountEtb).toLocaleString()}</p>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all text-center">
+                  <StatusBadge c={c} />
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-r border-border-subtle/30 rounded-r-2xl text-right group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  <div className="flex items-center justify-end gap-2">
+                    {!c.dmVerified && role === 'DISTRICT_MANAGER' && (
+                      <Button variant="primary" className="bg-warning text-bg hover:bg-warning/90 h-9 px-4 shadow-sm rounded-xl text-[11px] font-bold" onClick={() => onVerify(c.id)} disabled={isSubmitting} loading={isSubmitting}>Verify</Button>
+                    )}
+                    {c.dmVerified && !c.gmApproved && (role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR') && (
+                      <Button variant="primary" className="h-9 px-4 shadow-xl rounded-xl text-[11px] font-bold bg-text-main text-bg" onClick={() => onApprove(c.id)} disabled={isSubmitting} loading={isSubmitting}>Settle</Button>
+                    )}
+                    <Tooltip content="View Details">
+                      <button onClick={() => onSelect(c)} className="w-9 h-9 flex items-center justify-center bg-bg-base border border-border-subtle/30 rounded-xl text-text-muted hover:text-text-main transition-colors active:scale-95 shadow-sm">
+                        <ArrowUpRight size={14} />
+                      </button>
+                    </Tooltip>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const MobileGrid = ({ commissions, role, onSelect, onVerify, onApprove, isSubmitting }: any) => {
+  if (commissions.length === 0) {
+    return (
+      <div className="md:hidden py-16 text-center rounded-[20px] border border-dashed border-border-subtle bg-surface-card flex flex-col items-center justify-center gap-4">
+        <Lock className="text-text-muted opacity-10" size={40} />
+        <p className="text-text-muted/60 font-medium text-[13px]">
+          No active incentives in registry.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 md:hidden">
+      <div className="flex items-center justify-between px-1">
+        <p className="text-[15px] font-black text-text-main">Authorization Queue</p>
+        <span className="text-[12px] font-bold text-text-muted bg-bg-secondary px-2 py-1 rounded-md">{commissions.length} Requests</span>
+      </div>
+      <div className="flex flex-col gap-4">
+        {commissions.map((c: any) => (
+          <div key={c.id} className={cn("bg-surface-card rounded-[20px] border shadow-sm transition-all overflow-hidden flex flex-col", c.isPaid ? "border-border-subtle/30 opacity-70 grayscale-[0.3]" : "border-border-subtle/30")}>
+            {/* Header */}
+            <div className="p-5 flex items-start justify-between border-b border-border-subtle/30 bg-bg-secondary/30">
+              <div className="flex items-center gap-3">
+                <div className={cn("w-12 h-12 rounded-[14px] flex items-center justify-center shrink-0 shadow-inner", c.isPaid ? 'bg-bg-base border border-border-subtle text-text-muted/60' : c.dmVerified ? 'bg-warning/10 border border-warning/20 text-warning' : 'bg-primary-main/10 border border-primary-main/20 text-primary-main')}>
+                  <Users size={20} />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-black text-text-main leading-tight tracking-tight">
+                    {c.beneficiaryName || 'Operational Partner'}
+                  </h3>
+                  <p className="text-[11px] text-text-muted font-mono mt-1 uppercase">ID: {c.id.substring(0, 8)}</p>
+                </div>
+              </div>
+              <StatusBadge c={c} />
+            </div>
+
+            {/* Details */}
+            <div className="p-4 grid grid-cols-2 gap-4 bg-surface-card">
+              <div className="col-span-2 flex justify-between items-center bg-bg-secondary/50 rounded-xl p-3 border border-border-subtle/30">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Authorization Sum</span>
+                <div className="flex items-center gap-1.5 text-[16px] font-black font-mono text-text-main tracking-tight">
+                  {Number(c.amountEtb).toLocaleString()} <span className="text-[10px] text-primary-main font-bold">ETB</span>
+                </div>
+              </div>
+              <div className="border border-border-subtle/30 rounded-xl p-3 bg-bg-secondary/50">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Type</p>
+                <Badge variant={c.type === 'BROKER_REFERRAL' ? 'primary' : 'default'} className="text-[10px] uppercase font-bold border shadow-sm">
+                  {c.type === 'BROKER_REFERRAL' ? 'Partner' : 'Tier'}
+                </Badge>
+              </div>
+              <div className="border border-border-subtle/30 rounded-xl p-3 bg-bg-secondary/50">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Date</p>
+                <p className="text-[12px] font-bold text-text-main">{new Date(c.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-4 border-t border-border-subtle/30 bg-bg-base flex items-center justify-end gap-2">
+              <button onClick={() => onSelect(c)} className="flex-1 flex justify-center items-center gap-2 h-11 bg-surface-card border border-border-subtle/30 rounded-[12px] text-text-main font-bold text-[12px] hover:bg-bg-secondary shadow-sm">
+                <ArrowUpRight size={14} /> Details
+              </button>
+              {!c.dmVerified && role === 'DISTRICT_MANAGER' && (
+                <button onClick={() => onVerify(c.id)} disabled={isSubmitting} className="flex-1 flex items-center justify-center h-11 border rounded-[12px] shadow-sm bg-warning text-bg hover:bg-warning/90 font-bold text-[12px] disabled:opacity-50">
+                  Verify
+                </button>
+              )}
+              {c.dmVerified && !c.gmApproved && (role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR') && (
+                <button onClick={() => onApprove(c.id)} disabled={isSubmitting} className="flex-1 flex items-center justify-center h-11 border rounded-[12px] shadow-sm bg-text-main text-bg font-bold text-[12px] disabled:opacity-50">
+                  Settle
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Modals
+const CommissionModal = ({ isOpen, onClose, commission, role, onVerify, onApprove }: any) => {
+  if (!commission) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Commission Distribution Profile" subtitle={`Reference: ${commission.id?.substring(0, 12).toUpperCase() || 'N/A'}`} maxWidth="max-w-md">
+      <div className="space-y-6">
+        <div className="flex flex-col items-center justify-center p-6 bg-bg-secondary rounded-2xl border border-border-subtle/30 gap-4">
+          <div className="w-16 h-16 bg-surface-card rounded-[16px] shadow-sm border border-border-subtle/30 flex items-center justify-center text-primary-main">
+            <Users size={32} />
+          </div>
+          <div className="text-center">
+            <p className="text-xl font-black text-text-main tracking-tight leading-none mb-1">
+              {commission.beneficiaryName}
+            </p>
+            <p className="text-[12px] font-bold text-text-muted/80 uppercase">
+              {commission.beneficiaryRole?.replace(/_/g, ' ')}
+            </p>
+          </div>
+          <div className="text-center mt-2 pt-4 border-t border-border-subtle/30 w-full">
+            <p className="text-[11px] font-bold text-text-muted/60 uppercase tracking-wider mb-1">Approved Payout</p>
+            <p className="text-3xl font-black text-text-main tracking-tight font-mono">
+              {Number(commission.amountEtb).toLocaleString()} <span className="text-[14px] text-primary-main">ETB</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 bg-surface-card p-5 rounded-2xl border border-border-subtle/30">
+          <h4 className="text-[11px] font-bold text-text-main uppercase tracking-wider mb-2">
+            Approval Timeline
+          </h4>
+          <div className="space-y-0 pl-4 border-l-2 border-border-subtle/30 ml-2">
+            <div className="relative pl-6 pb-6">
+              <div className="absolute w-3 h-3 bg-primary-main rounded-full -left-[7px] top-1 shadow-md border-2 border-surface-card" />
+              <p className="text-sm font-bold text-text-main leading-none">Commission Logged</p>
+              <p className="text-[12px] font-mono text-text-muted/60 mt-1">
+                {new Date(commission.createdAt).toLocaleString()}
+              </p>
+            </div>
+            <div className={cn('relative pl-6 pb-6', !commission.dmVerified && 'opacity-40')}>
+              <div className={cn('absolute w-3 h-3 rounded-full -left-[7px] top-1 shadow-md border-2 border-surface-card', commission.dmVerified ? 'bg-warning' : 'bg-border-subtle/50')} />
+              <p className="text-sm font-bold text-text-main leading-none">
+                District Manager Verification
+              </p>
+              <p className="text-[12px] font-mono text-text-muted/60 mt-1">
+                {commission.dmVerified ? 'Verified locally' : 'Pending DM Review'}
+              </p>
+            </div>
+            <div className={cn('relative pl-6', !commission.gmApproved && !commission.isPaid && 'opacity-40')}>
+              <div className={cn('absolute w-3 h-3 rounded-full -left-[7px] top-1 shadow-md border-2 border-surface-card', commission.isPaid ? 'bg-success' : 'bg-border-subtle/50')} />
+              <p className="text-sm font-bold text-text-main leading-none">
+                Final Audit & Settlement
+              </p>
+              <p className="text-[12px] font-mono text-text-muted/60 mt-1">
+                {commission.isPaid ? 'Funds Disbursed' : 'Pending Finance Approval'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <Button variant="outline" className="flex-1 h-12 rounded-xl border-border-subtle/30 shadow-sm" onClick={onClose}>Close Profile</Button>
+          {!commission.dmVerified && role === 'DISTRICT_MANAGER' && (
+            <Button variant="primary" className="flex-1 h-12 rounded-xl bg-warning text-bg shadow-xl active:scale-95 transition-all" onClick={onVerify}>
+              Verify Payout
+            </Button>
+          )}
+          {commission.dmVerified && !commission.gmApproved && (role === 'GENERAL_MANAGER' || role === 'FINANCE_AUDITOR') && (
+            <Button variant="primary" className="flex-1 h-12 rounded-xl bg-text-main text-bg shadow-xl active:scale-95 transition-all" onClick={onApprove}>
+              Settle Incentive
+            </Button>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+};

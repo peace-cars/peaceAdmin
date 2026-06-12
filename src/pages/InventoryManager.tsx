@@ -33,6 +33,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
+import { fetchWithCache, apiCache } from '../lib/cache';
 import { KpiTile } from '../components/ui/KpiTile';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -260,12 +261,13 @@ const VehicleGrid: React.FC<VehicleGridProps> = ({
 // ─────────────────────────────────────────────────────────────────────────────
 interface DesktopTableProps {
   cars: any[];
+  onView: (car: any) => void;
   onEdit: (car: any) => void;
   onDelete: (id: string) => void;
   onPrint: (car: any) => void;
 }
 
-const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onEdit, onDelete, onPrint }) => (
+const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onView, onEdit, onDelete, onPrint }) => (
   <div className="bg-surface-card rounded-2xl shadow-sm border border-border-subtle/30 p-2 hidden md:block">
     <div className="flex flex-col gap-1.5 p-6 border-b border-border-subtle/30">
       <h2 className="text-[13px] font-bold text-text-main">Registry Ledger</h2>
@@ -286,7 +288,7 @@ const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onEdit, onDelete, onP
         </thead>
         <tbody>
           {cars.map((car) => (
-            <tr key={car.id} className="group transition-all">
+            <tr key={car.id} onClick={() => onView(car)} className="group transition-all cursor-pointer">
               <td className="py-4 px-4 bg-bg-secondary/30 border-y border-l border-border-subtle/30 rounded-l-2xl group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
                 <div className="flex items-center gap-5">
                   <div className="w-16 h-12 rounded-xl overflow-hidden border border-border-subtle bg-bg-secondary shrink-0 shadow-sm relative group-hover:scale-105 transition-transform">
@@ -410,7 +412,7 @@ const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onEdit, onDelete, onP
                   <Tooltip content="Print Sales Receipt">
                     <button
                       className="w-10 h-10 flex items-center justify-center bg-bg rounded-xl text-text-muted hover:text-primary-main border border-border-subtle shadow-sm transition-all active:scale-90"
-                      onClick={() => onPrint(car)}
+                      onClick={(e) => { e.stopPropagation(); onPrint(car); }}
                     >
                       <Printer size={14} />
                     </button>
@@ -418,7 +420,7 @@ const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onEdit, onDelete, onP
                   <Tooltip content="Modify Asset Registry">
                     <button
                       className="w-10 h-10 flex items-center justify-center bg-bg-secondary rounded-xl text-text-muted/60 hover:text-primary-main border border-border-subtle/30 shadow-sm transition-all active:scale-90"
-                      onClick={() => onEdit(car)}
+                      onClick={(e) => { e.stopPropagation(); onEdit(car); }}
                     >
                       <Edit2 size={14} />
                     </button>
@@ -426,7 +428,7 @@ const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onEdit, onDelete, onP
                   <Tooltip content="Remove Asset from Registry">
                     <button
                       className="w-10 h-10 flex items-center justify-center bg-bg-secondary rounded-xl text-text-muted/60 hover:text-error-main border border-border-subtle/30 shadow-sm transition-all active:scale-90"
-                      onClick={() => onDelete(car.id)}
+                      onClick={(e) => { e.stopPropagation(); onDelete(car.id); }}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -517,6 +519,7 @@ interface AssetFormModalProps {
   branches: any[];
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  isSubmitting?: boolean;
 }
 
 const AssetFormModal: React.FC<AssetFormModalProps> = ({
@@ -529,6 +532,7 @@ const AssetFormModal: React.FC<AssetFormModalProps> = ({
   branches,
   onClose,
   onSubmit,
+  isSubmitting,
 }) => (
   <Modal
     isOpen={isOpen}
@@ -538,13 +542,15 @@ const AssetFormModal: React.FC<AssetFormModalProps> = ({
     maxWidth="max-w-4xl"
     footer={
       <>
-        <Button variant="outline" className="flex-1 h-12" onClick={onClose}>
+        <Button variant="outline" className="flex-1 h-12" onClick={onClose} disabled={isSubmitting}>
           Cancel Operation
         </Button>
         <Button
           variant="primary"
           className="flex-1 h-12 shadow-lg shadow-primary-main/20"
           onClick={(e) => onSubmit(e as any)}
+          disabled={isSubmitting}
+          loading={isSubmitting}
         >
           {editingId ? 'Commit Asset Changes' : 'Finalize Registry Entry'}
         </Button>
@@ -876,12 +882,289 @@ const AssetFormModal: React.FC<AssetFormModalProps> = ({
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SUB-COMPONENT: AssetDetailsModal
+// ─────────────────────────────────────────────────────────────────────────────
+const AssetDetailsModal = ({ isOpen, car, onClose, onEdit }: { isOpen: boolean; car: any; onClose: () => void; onEdit: () => void }) => {
+  if (!car) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`${car.year} ${car.make} ${car.model}`} size="5xl">
+      <div className="relative pb-10 bg-bg-base overflow-y-auto max-h-[85vh] no-scrollbar">
+        
+        {/* HERO SECTION */}
+        <div className="relative h-72 md:h-96 -mx-5 md:-mx-6 -mt-5 flex items-end p-6 md:p-8 shrink-0">
+          <div className="absolute inset-0 bg-bg-secondary">
+            <img src={car.image} alt={car.model} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-bg-base via-bg-base/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-bg-base/60 to-transparent" />
+          </div>
+          
+          <div className="relative z-10 w-full flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+               <div className="flex flex-wrap gap-2 mb-3">
+                 <span className={cn("px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full backdrop-blur-md border", getStatusStyle(car.status))}>
+                   {car.status}
+                 </span>
+                 {car.duty && (
+                   <span className={cn("px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full backdrop-blur-md border", 
+                     car.duty === 'DUTY PAID' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                   )}>
+                     {car.duty}
+                   </span>
+                 )}
+                 <span className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full bg-black/40 text-white backdrop-blur-md border border-white/10">
+                   {car.fuel}
+                 </span>
+               </div>
+               <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-md">
+                 {car.make} <span className="text-primary-main">{car.model}</span>
+               </h1>
+               <p className="text-[14px] text-white/70 font-mono mt-2 flex items-center gap-2">
+                 <Network size={14} /> VIN: {car.vin || car.id}
+               </p>
+            </div>
+            
+            <div className="flex flex-col items-start md:items-end gap-3">
+               <div className="text-left md:text-right">
+                 <p className="text-[12px] text-white/70 uppercase tracking-[0.2em] font-bold mb-1">Registry Valuation</p>
+                 <p className="text-3xl md:text-4xl font-black text-white drop-shadow-md">{car.priceFormatted}</p>
+               </div>
+               <button 
+                 onClick={onEdit}
+                 className="flex items-center gap-2 px-6 py-2.5 bg-primary-main hover:bg-primary-dark text-white font-bold rounded-xl transition-all shadow-[0_0_20px_-5px_rgba(33,150,243,0.5)] hover:shadow-[0_0_25px_-5px_rgba(33,150,243,0.7)] active:scale-95"
+               >
+                  <Edit2 size={16} /> Edit Asset
+               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* CONTENT GRID */}
+        <div className="relative z-20 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-8 px-1 mt-6">
+           
+           {/* Main Column */}
+           <div className="space-y-8">
+              
+              {/* Quick Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-surface-card border border-border-subtle/30 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-primary-main/10 flex items-center justify-center text-primary-main mb-1">
+                    <Building2 size={16} />
+                  </div>
+                  <p className="text-[11px] text-text-muted uppercase tracking-wider font-bold">Location</p>
+                  <p className="text-[14px] font-bold text-text-main leading-tight truncate">{car.branchName || 'Unassigned'}</p>
+                </div>
+                <div className="bg-surface-card border border-border-subtle/30 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center text-warning mb-1">
+                    <LayoutGrid size={16} />
+                  </div>
+                  <p className="text-[11px] text-text-muted uppercase tracking-wider font-bold">Plate</p>
+                  <p className="text-[14px] font-bold text-text-main leading-tight truncate">{car.plate || 'Unregistered'}</p>
+                </div>
+                <div className="bg-surface-card border border-border-subtle/30 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center text-success mb-1">
+                    <Car size={16} />
+                  </div>
+                  <p className="text-[11px] text-text-muted uppercase tracking-wider font-bold">Mileage</p>
+                  <p className="text-[14px] font-bold text-text-main leading-tight truncate">{car.certifiedKm ? `${Number(car.certifiedKm).toLocaleString()} km` : 'N/A'}</p>
+                </div>
+                <div className="bg-surface-card border border-border-subtle/30 rounded-2xl p-4 flex flex-col gap-2 shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 mb-1">
+                    <Zap size={16} />
+                  </div>
+                  <p className="text-[11px] text-text-muted uppercase tracking-wider font-bold">Energy</p>
+                  <p className="text-[14px] font-bold text-text-main leading-tight truncate">{car.fuel}</p>
+                </div>
+              </div>
+
+              {/* Technical Specifications */}
+              {car.specifications && Object.keys(car.specifications).length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                     <Settings size={20} className="text-primary-main" />
+                     <h3 className="text-lg font-black text-text-main">Technical DNA</h3>
+                  </div>
+                  <div className="bg-surface-card border border-border-subtle/30 rounded-3xl p-1 overflow-hidden shadow-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y divide-border-subtle/30 md:divide-y-0">
+                      {car.specifications.batteryKwh && (
+                        <div className="p-5 text-center">
+                          <p className="text-[12px] text-text-muted uppercase tracking-wider font-bold mb-1">Battery</p>
+                          <p className="text-[20px] font-black text-text-main">{car.specifications.batteryKwh} <span className="text-[14px] text-primary-main">kWh</span></p>
+                        </div>
+                      )}
+                      {car.specifications.range && (
+                        <div className="p-5 text-center">
+                          <p className="text-[12px] text-text-muted uppercase tracking-wider font-bold mb-1">Range</p>
+                          <p className="text-[20px] font-black text-text-main">{car.specifications.range} <span className="text-[14px] text-primary-main">km</span></p>
+                        </div>
+                      )}
+                      {car.specifications.motorPower && (
+                        <div className="p-5 text-center">
+                          <p className="text-[12px] text-text-muted uppercase tracking-wider font-bold mb-1">Power</p>
+                          <p className="text-[20px] font-black text-text-main">{car.specifications.motorPower} <span className="text-[14px] text-primary-main">kW</span></p>
+                        </div>
+                      )}
+                      {car.specifications.driveTrain && (
+                        <div className="p-5 text-center">
+                          <p className="text-[12px] text-text-muted uppercase tracking-wider font-bold mb-1">Drive</p>
+                          <p className="text-[20px] font-black text-text-main">{car.specifications.driveTrain}</p>
+                        </div>
+                      )}
+                      {car.specifications.interiorColor && (
+                        <div className="p-5 text-center">
+                          <p className="text-[12px] text-text-muted uppercase tracking-wider font-bold mb-1">Interior</p>
+                          <p className="text-[20px] font-black text-text-main truncate" title={car.specifications.interiorColor}>{car.specifications.interiorColor}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Premium Features */}
+              {car.specifications?.features && car.specifications.features.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                     <Heart size={20} className="text-primary-main" />
+                     <h3 className="text-lg font-black text-text-main">Premium Features</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                     {car.specifications.features.map((feature: string, idx: number) => (
+                        <Badge key={idx} variant="default" className="bg-surface-card border-border-subtle/30 text-text-main py-1.5 px-3">
+                           {feature}
+                        </Badge>
+                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Media Gallery */}
+              {car.gallery && car.gallery.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                     <ImageIcon size={20} className="text-primary-main" />
+                     <h3 className="text-lg font-black text-text-main">Visuals</h3>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {car.gallery.map((img: string, idx: number) => (
+                      <a href={img} target="_blank" rel="noopener noreferrer" key={idx} className="group relative aspect-square rounded-2xl overflow-hidden bg-bg-secondary cursor-pointer border border-border-subtle/30 shadow-sm">
+                        <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                           <ExternalLink size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0" />
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+           </div>
+
+           {/* Sidebar Column */}
+           <div className="space-y-6">
+              
+              {/* Asset Financials */}
+              <div className="bg-surface-card border border-border-subtle/30 rounded-3xl p-5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)]">
+                 <div className="flex items-center gap-2 mb-4">
+                    <span className="text-[18px] text-primary-main font-serif">ብር</span>
+                    <h3 className="text-[15px] font-black text-text-main">Asset Financials</h3>
+                 </div>
+                 <div className="space-y-4">
+                    {car.unitCost > 0 && (
+                       <div className="flex justify-between items-center pb-3 border-b border-border-subtle/30">
+                          <p className="text-[13px] text-text-muted">Procurement Cost</p>
+                          <p className="text-[14px] font-bold text-text-main">{new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB', maximumFractionDigits: 0 }).format(car.unitCost)}</p>
+                       </div>
+                    )}
+                    <div className="flex justify-between items-center pb-3 border-b border-border-subtle/30">
+                       <p className="text-[13px] text-text-muted">Floor Plan Loan</p>
+                       <Badge variant={car.floorPlanLoan ? "warning" : "success"} className="text-[11px]">
+                          {car.floorPlanLoan ? 'Active' : 'Clear'}
+                       </Badge>
+                    </div>
+                    {car.floorPlanLoan && car.maturityDate && (
+                       <div className="flex justify-between items-center">
+                          <p className="text-[13px] text-text-muted">Maturity Date</p>
+                          <p className="text-[13px] font-bold text-warning">{new Date(car.maturityDate).toLocaleDateString()}</p>
+                       </div>
+                    )}
+                 </div>
+              </div>
+
+              {/* Asset Lifecycle */}
+              <div className="bg-surface-card border border-border-subtle/30 rounded-3xl p-5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)]">
+                 <div className="flex items-center gap-2 mb-4">
+                    <Settings size={18} className="text-primary-main" />
+                    <h3 className="text-[15px] font-black text-text-main">Asset Lifecycle</h3>
+                 </div>
+                 <div className="space-y-4">
+                    <div className="flex justify-between items-center pb-3 border-b border-border-subtle/30">
+                       <p className="text-[13px] text-text-muted">System Entry</p>
+                       <p className="text-[13px] font-medium text-text-main">{car.createdAt ? new Date(car.createdAt).toLocaleDateString() : 'Unknown'}</p>
+                    </div>
+                    {car.soldDate && (
+                       <div className="flex justify-between items-center">
+                          <p className="text-[13px] text-text-muted">Disposition Date</p>
+                          <p className="text-[13px] font-medium text-success">{new Date(car.soldDate).toLocaleDateString()}</p>
+                       </div>
+                    )}
+                 </div>
+              </div>
+
+              {/* Internal Documents */}
+              <div className="bg-surface-card border border-border-subtle/30 rounded-3xl p-5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)]">
+                 <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                       <FileText size={18} className="text-primary-main" />
+                       <h3 className="text-[15px] font-black text-text-main">Dossier</h3>
+                    </div>
+                    <Badge variant="default" className="bg-bg-secondary text-text-muted">{car.internalDocuments?.length || 0}</Badge>
+                 </div>
+                 
+                 {(!car.internalDocuments || car.internalDocuments.length === 0) ? (
+                    <div className="py-6 text-center border border-dashed border-border-subtle/50 rounded-2xl">
+                       <FileText size={24} className="mx-auto text-border-strong mb-2" />
+                       <p className="text-[13px] text-text-muted font-medium">No documents</p>
+                    </div>
+                 ) : (
+                    <div className="space-y-2">
+                      {car.internalDocuments.map((doc: any, idx: number) => (
+                        <a 
+                          href={doc.url || doc} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          key={idx} 
+                          className="flex items-center justify-between p-3 rounded-2xl border border-border-subtle/30 bg-bg-base hover:border-primary-main/30 hover:bg-bg-secondary transition-all group"
+                        >
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-8 h-8 rounded-full bg-primary-main/10 flex items-center justify-center shrink-0">
+                              <FileText size={14} className="text-primary-main" />
+                            </div>
+                            <p className="text-[13px] font-bold text-text-main truncate group-hover:text-primary-main transition-colors">
+                              {doc.name || `Attachment ${idx + 1}`}
+                            </p>
+                          </div>
+                          <ChevronRight size={14} className="text-text-muted shrink-0 group-hover:translate-x-1 transition-transform" />
+                        </a>
+                      ))}
+                    </div>
+                 )}
+              </div>
+           </div>
+           
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 const InventoryManager = () => {
   const { session } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
+  const showSold = searchParams.get('showSold') === 'true';
 
   const [activeTab, setActiveTab] = useState<
     'core' | 'specs' | 'gallery' | 'financials' | 'archives'
@@ -889,9 +1172,11 @@ const InventoryManager = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [printReceiptOpen, setPrintReceiptOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [viewingCar, setViewingCar] = useState<any>(null);
   const [inventory, setInventory] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -924,6 +1209,7 @@ const InventoryManager = () => {
   });
 
   const filteredInventory = inventory.filter((car) => {
+    if (!showSold && car.status === 'SOLD') return false;
     const searchStr =
       `${car.make} ${car.model} ${car.year} ${car.plate} ${car.status}`.toLowerCase();
     return searchStr.includes(searchQuery.toLowerCase());
@@ -952,10 +1238,59 @@ const InventoryManager = () => {
     setDisplayCount(ITEMS_PER_PAGE);
   }, [searchQuery]);
 
+  // ── Vehicle mapper (shared by sync hydration + SWR callback) ──
+  const mapVehicle = (v: any) => ({
+    id: v.id,
+    make: v.make || 'Unknown',
+    model: v.model || 'Model',
+    year: v.year || new Date().getFullYear(),
+    priceFormatted: v.retail_price_etb
+      ? `ETB ${(Number(v.retail_price_etb) / 1000000).toFixed(1)}M`
+      : 'Price TBD',
+    rawPrice: v.retail_price_etb || 0,
+    fuel: v.fuel || v.fuel_type || 'N/A',
+    plate: v.plate_code || v.plate_number || 'No Plate',
+    status: String(v.status || 'UNKNOWN').split('_').join(' '),
+    duty: String(v.duty || v.duty_status || 'UNKNOWN').split('_').join(' '),
+    branchName: v.branches?.name || 'Main Registry',
+    branchId: v.branch_id,
+    image:
+      Array.isArray(v.gallery) && v.gallery.length > 0
+        ? v.gallery[0]
+        : Array.isArray(v.images) && v.images.length > 0
+          ? v.images[0]
+          : v.first_image_url ||
+            'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=2000&auto=format&fit=crop',
+    specifications: {
+      batteryKwh: v.battery_capacity_kwh || '',
+      range: v.range_km || '',
+      motorPower: v.motor_power_kw || '',
+      driveTrain: v.drive_train || 'RWD',
+      interiorColor: v.interior_color || 'Black',
+      features: v.features || [],
+    },
+    gallery: Array.isArray(v.gallery) ? v.gallery : Array.isArray(v.images) ? v.images : [],
+    certifiedKm: v.certified_km || null,
+    internalDocuments: Array.isArray(v.internal_documents) ? v.internal_documents : [],
+    unitCost: v.unit_cost || 0,
+    floorPlanLoan: v.floor_plan_loan || false,
+    maturityDate: v.maturity_date
+      ? new Date(v.maturity_date).toISOString().split('T')[0]
+      : '',
+    soldDate: v.sold_date ? new Date(v.sold_date).toISOString().split('T')[0] : '',
+    createdAt: v.created_at || new Date().toISOString(),
+  });
+
+  const handleVehicleData = (data: any) => {
+    const arr = Array.isArray(data) ? data : [];
+    setInventory(arr.map(mapVehicle));
+  };
+
   const fetchBranches = async () => {
     try {
-      const data = await api.get<any[]>('/locations');
-      setBranches(Array.isArray(data) ? data : []);
+      await fetchWithCache('/locations', {}, (data) => {
+        setBranches(Array.isArray(data) ? data : []);
+      });
     } catch (err) {
       console.error('[Inventory] Branch Fetch Failed', err);
     }
@@ -963,50 +1298,7 @@ const InventoryManager = () => {
 
   const fetchInventory = async () => {
     try {
-      const data = await api.get<any[]>('/vehicles');
-      const dataArray = Array.isArray(data) ? data : [];
-      const mapped = dataArray.map((v: any) => ({
-        id: v.id,
-        make: v.make || 'Unknown',
-        model: v.model || 'Model',
-        year: v.year || new Date().getFullYear(),
-        priceFormatted: v.retail_price_etb
-          ? `ETB ${(Number(v.retail_price_etb) / 1000000).toFixed(1)}M`
-          : 'Price TBD',
-        rawPrice: v.retail_price_etb || 0,
-        fuel: v.fuel || v.fuel_type || 'N/A',
-        plate: v.plate_code || v.plate_number || 'No Plate',
-        status: String(v.status || 'UNKNOWN').split('_').join(' '),
-        duty: String(v.duty || v.duty_status || 'UNKNOWN').split('_').join(' '),
-        branchName: v.branches?.name || 'Main Registry',
-        branchId: v.branch_id,
-        image:
-          Array.isArray(v.gallery) && v.gallery.length > 0
-            ? v.gallery[0]
-            : Array.isArray(v.images) && v.images.length > 0
-              ? v.images[0]
-              : v.first_image_url ||
-                'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=2000&auto=format&fit=crop',
-        specifications: {
-          batteryKwh: v.battery_capacity_kwh || '',
-          range: v.range_km || '',
-          motorPower: v.motor_power_kw || '',
-          driveTrain: v.drive_train || 'RWD',
-          interiorColor: v.interior_color || 'Black',
-          features: v.features || [],
-        },
-        gallery: Array.isArray(v.gallery) ? v.gallery : Array.isArray(v.images) ? v.images : [],
-        certifiedKm: v.certified_km || null,
-        internalDocuments: Array.isArray(v.internal_documents) ? v.internal_documents : [],
-        unitCost: v.unit_cost || 0,
-        floorPlanLoan: v.floor_plan_loan || false,
-        maturityDate: v.maturity_date
-          ? new Date(v.maturity_date).toISOString().split('T')[0]
-          : '',
-        soldDate: v.sold_date ? new Date(v.sold_date).toISOString().split('T')[0] : '',
-        createdAt: v.created_at || new Date().toISOString(),
-      }));
-      setInventory(mapped);
+      await fetchWithCache('/vehicles', {}, handleVehicleData);
     } catch (err) {
       console.error('[Inventory] Fetch Failed', err);
     }
@@ -1075,6 +1367,7 @@ const InventoryManager = () => {
       payload.branch_id = formData.branchId;
     }
 
+    setIsSubmitting(true);
     try {
       if (editingId) {
         await api.patch(`/vehicles/${editingId}`, payload);
@@ -1084,9 +1377,12 @@ const InventoryManager = () => {
       setIsAdding(false);
       setEditingId(null);
       resetForm();
+      apiCache.clear();
       fetchInventory();
     } catch (err) {
       console.error('[Inventory] Save Failed', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1127,11 +1423,15 @@ const InventoryManager = () => {
 
   const handleDelete = async (carId: string) => {
     if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
+    setIsSubmitting(true);
     try {
       await api.delete(`/vehicles/${carId}`);
+      apiCache.clear();
       fetchInventory();
     } catch (err) {
       console.error('[Inventory] Delete Failed', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1201,6 +1501,22 @@ const InventoryManager = () => {
                   className="w-full rounded-2xl border border-border-subtle/30 bg-bg-secondary py-3 pl-11 pr-4 text-[13px] font-semibold text-text-main shadow-sm transition-all placeholder:text-text-muted/30 focus:border-primary-main/30 focus:outline-none focus:ring-4 focus:ring-primary-main/5"
                 />
               </div>
+              <button
+                onClick={() => {
+                  const newParams = new URLSearchParams(searchParams);
+                  if (showSold) newParams.delete('showSold');
+                  else newParams.set('showSold', 'true');
+                  setSearchParams(newParams, { replace: true });
+                }}
+                className={`h-11 px-4 rounded-2xl border transition-all text-[13px] font-bold flex items-center gap-2 shrink-0 ${
+                  showSold 
+                    ? 'bg-success/10 border-success/30 text-success-main' 
+                    : 'bg-bg-secondary border-border-subtle/30 text-text-muted hover:border-border-subtle'
+                }`}
+              >
+                <Archive size={16} />
+                {showSold ? 'Hide Sold' : 'View Sold'}
+              </button>
               <Button
                 variant="primary"
                 className="h-11 px-6 shadow-lg shadow-primary-main/20 shrink-0 text-sm font-bold whitespace-nowrap"
@@ -1272,7 +1588,7 @@ const InventoryManager = () => {
               cars={displayedInventory}
               bottomRef={bottomRef}
               hasMore={displayCount < filteredInventory.length}
-              onOpen={openEdit}
+              onOpen={setViewingCar}
               onPrint={(car) => {
                 setSelectedAsset(car);
                 setPrintReceiptOpen(true);
@@ -1283,6 +1599,7 @@ const InventoryManager = () => {
           {/* ══════════ DESKTOP TABLE ══════════ */}
           <DesktopTable
             cars={filteredInventory}
+            onView={setViewingCar}
             onEdit={openEdit}
             onDelete={handleDelete}
             onPrint={(car) => {
@@ -1323,6 +1640,18 @@ const InventoryManager = () => {
           setIsAdding(false);
         }}
         onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+      />
+
+      {/* ─── ASSET DETAILS MODAL ─── */}
+      <AssetDetailsModal 
+        isOpen={!!viewingCar} 
+        car={viewingCar} 
+        onClose={() => setViewingCar(null)} 
+        onEdit={() => {
+          setViewingCar(null);
+          openEdit(viewingCar);
+        }} 
       />
 
       {/* ─── DOCUMENT VIEWER (Print Receipt) ─── */}

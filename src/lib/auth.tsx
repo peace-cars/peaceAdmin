@@ -138,40 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearTimeout(fallbackTimer);
   }, []);
 
-  // Periodic background token refresh check
-  useEffect(() => {
-    if (!session?.expires_at) return;
-    const interval = setInterval(async () => {
-      const nowSec = Math.floor(Date.now() / 1000);
-      
-      // If token expires in less than 15 minutes, refresh in background
-      if (session.expires_at - nowSec < 900) {
-        console.log('[Admin Auth] Background token refresh triggered...');
-        try {
-          const res = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
-          if (res.ok) {
-            const result = await res.json();
-            const payload = result?.data ?? result;
-            const newSessionData: SessionData = {
-              access_token: payload.session?.access_token || payload.access_token || session.access_token || '',
-              refresh_token: payload.session?.refresh_token || payload.refresh_token || '',
-              expires_at: payload.session?.expires_at || Math.floor(Date.now() / 1000) + 3600,
-              user: session.user,
-              profile: session.profile
-            };
-            localStorage.setItem('admin_session', JSON.stringify(newSessionData));
-            setSession(newSessionData);
-            console.log('[Admin Auth] Background token refresh successful.');
-          } else {
-            console.warn('[Admin Auth] Background refresh failed');
-          }
-        } catch (e) {
-          console.error('[Admin Auth] Background refresh error', e);
-        }
-      }
-    }, 60000); // Check every 60 seconds
-    return () => clearInterval(interval);
-  }, [session?.expires_at]);
+  // Token refresh is now handled reactively by the API 401 interceptor.
+  // No background polling needed — eliminates single-use-token race conditions.
 
   const login = async (email: string, password: string): Promise<{ error?: string }> => {
     const url = `${API_URL}/auth/login`;
@@ -290,16 +258,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    try {
-      await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
-    } catch (e) {
-      console.error(e);
-    }
+    // Always clear local session first — ensures logout works even if network fails
     localStorage.removeItem('admin_session');
     localStorage.removeItem('admin_role');
     localStorage.removeItem('admin_location');
     localStorage.removeItem('admin_selected_branch');
     setSession(null);
+    // Fire-and-forget server-side cookie cleanup
+    fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
   };
 
   return (

@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { SectionCard } from '../components/ui/SectionCard';
 import { cn } from '../lib/utils';
 import { api } from '../lib/api';
+import { apiCache } from '../lib/cache';
 
 export default function AssetLibrary() {
   const { session } = useAuth();
@@ -11,14 +12,31 @@ export default function AssetLibrary() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dmBranches, setDmBranches] = useState<any[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>(
+    () => localStorage.getItem('admin_selected_branch') || 'ALL'
+  );
+
+  const selectBranch = (id: string, name?: string) => {
+    setSelectedBranch(id);
+    localStorage.setItem('admin_selected_branch', id);
+    localStorage.setItem('admin_selected_branch_name', id === 'ALL' ? 'ALL BRANCHES' : (name || 'Branch'));
+    apiCache.clear();
+  };
 
   useEffect(() => {
     if (!session) return;
     const fetchAssets = async () => {
       try {
+        if (session.profile?.role === 'GENERAL_MANAGER') {
+          api.get<any[]>('/locations').then(data => {
+            setDmBranches(Array.isArray(data) ? data : []);
+          }).catch(console.error);
+        }
+
         const [vehicles, budgets] = await Promise.all([
           api.get<any[]>('/vehicles'),
-          api.get<any[]>('/budgets'),
+          api.get<any[]>('/staff-budgets'),
         ]);
 
         const allAssets: any[] = [];
@@ -76,7 +94,7 @@ export default function AssetLibrary() {
       }
     };
     fetchAssets();
-  }, [session]);
+  }, [session, selectedBranch]);
 
   const filteredAssets = assets.filter((a) => {
     const matchesSearch = a.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -87,7 +105,8 @@ export default function AssetLibrary() {
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
-        <div className="relative flex-grow max-w-sm">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto flex-grow">
+          <div className="relative max-w-sm flex-grow">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted/30"
             size={14}
@@ -99,6 +118,26 @@ export default function AssetLibrary() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-bg-secondary border border-border-subtle/50 rounded-lg py-2 pl-10 pr-4 text-[13px] font-medium text-text-main placeholder:text-text-muted/30 focus:outline-none focus:border-primary-main/30 transition-all shadow-sm"
           />
+        </div>
+        {session?.profile?.role === 'GENERAL_MANAGER' && (
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] font-medium text-text-muted hidden sm:inline">Viewing:</span>
+            <select 
+              className="bg-surface-card border border-border-subtle text-[13px] md:text-[14px] font-semibold h-10 px-3 pr-8 rounded-xl text-text-main outline-none focus:border-primary-main/50 appearance-none cursor-pointer shadow-sm transition-all"
+              value={selectedBranch}
+              onChange={(e) => {
+                const id = e.target.value;
+                const branch = dmBranches.find((b: any) => b.id === id);
+                selectBranch(id, branch?.name || branch?.code);
+              }}
+            >
+              <option value="ALL">National Overview</option>
+              {dmBranches.map(b => (
+                <option key={b.id} value={b.id}>{b.name || b.code}</option>
+              ))}
+            </select>
+          </div>
+        )}
         </div>
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           {['ALL', 'INVENTORY', 'FINANCE'].map((f) => (

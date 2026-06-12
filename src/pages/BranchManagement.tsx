@@ -1,30 +1,17 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  MapPin,
-  Plus,
-  Power,
-  Phone,
-  Users,
-  X,
-  Building2,
-  Globe,
-  Activity,
-  ChevronDown,
-  ChevronRight,
-  UserPlus,
-  ShieldCheck,
-  Star,
-  Edit,
-  Crown,
+  MapPin, Plus, Power, Phone, Users, X, Building2, Globe, Activity,
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Crown, Network, Briefcase, Edit
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
-import { fetchWithCache } from '../lib/cache';
+import { fetchWithCache, apiCache } from '../lib/cache';
 import { KpiTile } from '../components/ui/KpiTile';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { TextField, SelectField } from '../components/ui/FormControls';
 import { Modal } from '../components/ui/Modal';
+import { Tooltip } from '../components/ui/Tooltip';
 import { cn } from '../lib/utils';
 
 export default function BranchManagement() {
@@ -35,30 +22,20 @@ export default function BranchManagement() {
   const [people, setPeople] = useState<any[]>([]);
   const [expandedBranch, setExpandedBranch] = useState<string | null>(null);
   const [branchStaff, setBranchStaff] = useState<Record<string, any[]>>({});
+  
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState<any | null>(null);
   const [showAssignDM, setShowAssignDM] = useState<string | null>(null);
   const [showAddStaff, setShowAddStaff] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [form, setForm] = useState({ name: '', code: '', address: '', phone: '' });
-  const [staffForm, setStaffForm] = useState({
-    personId: '',
-    fullName: '',
-    phone: '',
-    role: 'STAFF',
-    commissionTier: '1.0',
-  });
+  const [staffForm, setStaffForm] = useState({ personId: '' });
   const [selectedDM, setSelectedDM] = useState('');
 
   const fetchBranches = () => {
     fetchWithCache('/locations', {}, (data) => {
-      setBranches(
-        Array.isArray(data)
-          ? data.map((b: any) => ({
-              ...b,
-              phone: b.phone_number,
-              isActive: b.is_active,
-            }))
-          : [],
-      );
+      setBranches(Array.isArray(data) ? data.map((b: any) => ({ ...b, phone: b.phone_number, isActive: b.is_active })) : []);
     }).catch(e => console.error(e));
   };
 
@@ -90,588 +67,456 @@ export default function BranchManagement() {
   };
 
   const handleCreateBranch = async () => {
+    setIsSubmitting(true);
     try {
       const res = await api.post<any>('/locations', form);
       if (res.success || res.branch) {
+        apiCache.clear();
         fetchBranches();
         setShowCreate(false);
         setForm({ name: '', code: '', address: '', phone: '' });
-      } else {
-        alert(res.message || 'Failed to create branch');
-      }
-    } catch (e: any) {
-      console.error(e);
-      alert(e?.message || 'Error creating branch');
-    }
+      } else alert(res.message || 'Failed to create branch');
+    } catch (e: any) { alert(e?.message || 'Error creating branch'); }
+    setIsSubmitting(false);
+  };
+
+  const handleEditBranch = async () => {
+    if (!showEdit) return;
+    setIsSubmitting(true);
+    try {
+      const res = await api.patch<any>(`/locations/${showEdit.id}`, showEdit.form);
+      if (res.success) {
+        apiCache.clear();
+        fetchBranches();
+        setShowEdit(null);
+      } else alert(res.message || 'Failed to update branch');
+    } catch (e: any) { alert(e?.message || 'Error updating branch'); }
+    setIsSubmitting(false);
   };
 
   const assignDM = async (branchId: string) => {
     if (!selectedDM) return;
+    setIsSubmitting(true);
     try {
-      const res = await api.patch<any>(`/locations/${branchId}/assign-manager`, {
-        managerId: selectedDM,
-      });
+      const res = await api.patch<any>(`/locations/${branchId}/assign-manager`, { managerId: selectedDM });
       if (res.success || res.managerName) {
+        apiCache.clear();
         fetchBranches();
         setShowAssignDM(null);
         setSelectedDM('');
-      } else {
-        alert(res.message || 'Failed to assign DM');
-      }
-    } catch (e: any) {
-      console.error(e);
-      alert(e?.message || 'Error assigning DM');
-    }
+      } else alert(res.message || 'Failed to assign DM');
+    } catch (e: any) { alert(e?.message || 'Error assigning DM'); }
+    setIsSubmitting(false);
   };
 
   const unassignDM = async (branchId: string) => {
     if (!window.confirm('Remove the District Manager from this branch?')) return;
     try {
-      const res = await api.patch<any>(`/locations/${branchId}/unassign-manager`, {});
-      if (res.success || res) fetchBranches();
-    } catch (e) {
-      console.error(e);
-    }
+      await api.patch<any>(`/locations/${branchId}/unassign-manager`, {});
+      apiCache.clear();
+      fetchBranches();
+    } catch (e) {}
   };
 
   const addStaffToBranch = async (branchId: string) => {
     if (!staffForm.personId) return;
+    setIsSubmitting(true);
     try {
-      const res = await api.patch<any>(`/people/${staffForm.personId}`, {
-        locationId: branchId,
-      });
-      if (res.success === false) {
-        alert(res.message || 'Failed to assign staff');
-        return;
-      }
-      // The API returns success: true, or just doesn't throw
+      const res = await api.patch<any>(`/people/${staffForm.personId}`, { locationId: branchId });
+      if (res.success === false) return alert(res.message || 'Failed to assign staff');
+      apiCache.clear();
       fetchBranchStaff(branchId);
       fetchBranches();
       setShowAddStaff(null);
-      setStaffForm((prev) => ({ ...prev, personId: '' }));
-    } catch (e: any) {
-      console.error(e);
-      alert(e?.message || 'Error assigning staff');
-    }
+      setStaffForm({ personId: '' });
+    } catch (e: any) { alert(e?.message || 'Error assigning staff'); }
+    setIsSubmitting(false);
   };
 
   const toggleBranchActive = async (id: string) => {
     try {
       const res = await api.patch<any>(`/locations/${id}/toggle`, {});
       if (res.success || res.isActive !== undefined) {
-        setBranches((prev) =>
-          prev.map((b) =>
-            b.id === id
-              ? { ...b, isActive: res.isActive !== undefined ? res.isActive : !b.isActive }
-              : b,
-          ),
-        );
-      } else {
-        alert(res.message || 'Failed to toggle branch');
+        apiCache.clear();
+        setBranches((prev) => prev.map((b) => b.id === id ? { ...b, isActive: res.isActive !== undefined ? res.isActive : !b.isActive } : b));
       }
-    } catch (e: any) {
-      console.error(e);
-      alert(e?.message || 'Error toggling branch');
-    }
+    } catch (e: any) {}
   };
 
-  const availableDMs = people.filter(
-    (p) => p.role === 'DISTRICT_MANAGER' && !branches.some((b) => b.manager_id === p.id),
-  );
-
-  const availableStaff = people.filter(
-    (p) => (p.role === 'STAFF' || p.role === 'BROKER') && p.locationId !== showAddStaff,
-  );
+  const availableDMs = people.filter((p) => p.role === 'DISTRICT_MANAGER' && !branches.some((b) => b.manager_id === p.id));
+  const availableStaff = people.filter((p) => (p.role === 'STAFF' || p.role === 'BROKER') && p.locationId !== showAddStaff);
 
   const activeBranches = branches.filter((b) => b.isActive).length;
   const totalStaff = branches.reduce((s, b) => s + (b.staffCount || 0), 0);
   const assignedDMs = branches.filter((b) => b.manager_id).length;
 
-  // DM can only see their own branch
-  const visibleBranches =
-    role === 'GENERAL_MANAGER'
-      ? branches
-      : branches.filter((b) => {
-          const myId = session?.user?.id;
-          return b.manager_id === myId || people.find((p) => p.id === myId)?.locationId === b.id;
-        });
+  const visibleBranches = role === 'GENERAL_MANAGER' ? branches : branches.filter((b) => {
+    const myId = session?.user?.id;
+    return b.manager_id === myId || people.find((p) => p.id === myId)?.locationId === b.id;
+  });
 
   return (
-    <div className="space-y-8 pb-20">
-      {role === 'GENERAL_MANAGER' && (
-        <div className="flex justify-end border-b border-border-subtle/30 pb-4">
+    <div className="space-y-6 md:space-y-8 pb-12">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-text-main tracking-tight">Network Architecture</h1>
+          <p className="text-[13px] text-text-muted/80 font-medium mt-1">
+            Global management of regional hubs and operational structure.
+          </p>
+        </div>
+        
+        {role === 'GENERAL_MANAGER' && (
           <Button
             variant="primary"
-            size="sm"
             onClick={() => setShowCreate(true)}
-            className="rounded-xl h-11 px-6 bg-text-main text-bg font-bold text-[12px] shadow-xl active:scale-95 transition-all w-full md:w-auto"
+            className="h-11 px-6 shadow-xl active:scale-95 transition-all bg-text-main text-bg font-bold w-full md:w-auto"
           >
-            <Plus size={14} className="mr-2" /> New Branch
+            <Plus size={16} className="mr-2" /> Initialize Hub
           </Button>
-        </div>
-      )}
-
-      {/* KPI Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiTile
-          label="Total Branches"
-          value={branches.length}
-          icon={<Globe size={14} />}
-          className="rounded-xl p-4 h-28"
-        />
-        <KpiTile
-          label="Operational"
-          value={activeBranches}
-          icon={<Activity size={14} />}
-          className="rounded-xl p-4 h-28"
-        />
-        <KpiTile
-          label="Assigned DMs"
-          value={assignedDMs}
-          icon={<Crown size={14} />}
-          className="rounded-xl p-4 h-28"
-        />
-        <KpiTile
-          label="Total Personnel"
-          value={totalStaff}
-          icon={<Users size={14} />}
-          className="rounded-xl p-4 h-28"
-        />
+        )}
       </div>
 
-      {/* Branch Cards */}
-      <div className="space-y-6">
-        {visibleBranches.map((branch) => (
-          <div
-            key={branch.id}
-            className={cn(
-              'bg-surface-card rounded-2xl border border-border-subtle/30 shadow-sm overflow-hidden transition-all',
-              !branch.isActive && 'opacity-60 grayscale-[0.5] border-dashed',
-            )}
-          >
-            {/* Branch Header */}
-            <div
-              className="p-6 flex items-center justify-between cursor-pointer hover:bg-bg-base/30 transition-all"
-              onClick={() => toggleExpand(branch.id)}
-            >
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-2xl bg-primary-main/10 flex items-center justify-center border border-primary-main/10 shadow-inner">
-                  <Building2 size={20} className="text-primary-main" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-bold text-text-main tracking-tight">
-                      {branch.name}
-                    </h3>
-                    <Badge variant="default" className="text-[11px] font-mono">
-                      {branch.code}
-                    </Badge>
-                    {branch.isActive ? (
-                      <Badge variant="primary" className="text-[11px]">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="warning" className="text-[11px]">
-                        Inactive
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-[13px] text-text-muted font-medium flex items-center gap-1.5">
-                    <MapPin size={10} /> {branch.address || 'No address'}
-                  </p>
-                </div>
-              </div>
+      {/* KPIs */}
+      <MobileKpis branches={branches.length} activeBranches={activeBranches} assignedDMs={assignedDMs} totalStaff={totalStaff} />
 
-              <div className="flex items-center gap-6">
-                {/* DM Badge */}
-                {branch.managerName ? (
-                  <div className="flex items-center gap-3 bg-warning/10 border border-warning/20 rounded-xl px-4 py-2">
-                    <Crown size={14} className="text-warning" />
-                    <div>
-                      <p className="text-[11px] text-warning font-medium">District Manager</p>
-                      <p className="text-xs font-bold text-warning tracking-tight">
-                        {branch.managerName}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 bg-error-main/10 border border-error-main/20 rounded-xl px-4 py-2">
-                    <ShieldCheck size={14} className="text-error-main" />
-                    <p className="text-[12px] text-error-main font-medium">No DM Assigned</p>
-                  </div>
-                )}
+      {/* Main Content */}
+      <DesktopTable 
+        branches={visibleBranches} 
+        expandedBranch={expandedBranch}
+        branchStaff={branchStaff}
+        role={role}
+        onToggleExpand={toggleExpand}
+        onToggleActive={toggleBranchActive}
+        onUnassignDM={unassignDM}
+        onShowAssignDM={(id) => { setShowAssignDM(id); setSelectedDM(''); }}
+        onShowAddStaff={(id) => { setShowAddStaff(id); setStaffForm({ personId: '' }); }}
+        onShowEdit={(branch) => setShowEdit({ id: branch.id, form: { name: branch.name, code: branch.code || '', address: branch.address || '', phone: branch.phone || '' } })}
+      />
+      <MobileGrid 
+        branches={visibleBranches}
+        expandedBranch={expandedBranch}
+        branchStaff={branchStaff}
+        role={role}
+        onToggleExpand={toggleExpand}
+        onToggleActive={toggleBranchActive}
+        onUnassignDM={unassignDM}
+        onShowAssignDM={(id) => { setShowAssignDM(id); setSelectedDM(''); }}
+        onShowAddStaff={(id) => { setShowAddStaff(id); setStaffForm({ personId: '' }); }}
+        onShowEdit={(branch) => setShowEdit({ id: branch.id, form: { name: branch.name, code: branch.code || '', address: branch.address || '', phone: branch.phone || '' } })}
+      />
 
-                {/* Staff Count */}
-                <div className="flex items-center gap-2 bg-bg-base rounded-xl px-4 py-2 border border-border-subtle">
-                  <Users size={14} className="text-text-muted" />
-                  <span className="text-sm font-bold text-text-main">{branch.staffCount || 0}</span>
-                  <span className="text-[11px] text-text-muted font-medium">Staff</span>
-                </div>
-
-                {/* Expand Arrow */}
-                <div
-                  className={cn(
-                    'transition-transform duration-300',
-                    expandedBranch === branch.id && 'rotate-180',
-                  )}
-                >
-                  <ChevronDown size={18} className="text-text-muted" />
-                </div>
-              </div>
-            </div>
-
-            {/* Expanded Content */}
-            {expandedBranch === branch.id && (
-              <div className="border-t border-border-subtle/30 bg-bg-secondary/20 animate-in slide-in-from-top-2 duration-200">
-                {/* Branch Actions Bar */}
-                <div className="px-6 py-4 flex items-center justify-between border-b border-border-subtle/20 bg-bg-secondary/50">
-                  <div className="flex items-center gap-3">
-                    {role === 'GENERAL_MANAGER' && (
-                      <>
-                        {branch.managerName ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => unassignDM(branch.id)}
-                            className="h-9 px-4 text-[12px] font-medium rounded-xl border-warning/20 text-warning hover:bg-warning/10"
-                          >
-                            <X size={12} className="mr-1.5" /> Remove DM
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => {
-                              setShowAssignDM(branch.id);
-                              setSelectedDM('');
-                            }}
-                            className="h-9 px-4 text-[12px] font-medium rounded-xl bg-warning hover:bg-warning/80 text-bg shadow-md"
-                          >
-                            <Crown size={12} className="mr-1.5" /> Assign DM
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setShowAddStaff(branch.id);
-                        setStaffForm((prev) => ({ ...prev, personId: '' }));
-                      }}
-                      className="h-9 px-4 text-[12px] font-medium rounded-xl shadow-md"
-                    >
-                      <UserPlus size={12} className="mr-1.5" /> Assign Staff
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleBranchActive(branch.id)}
-                      className="h-9 px-4 text-[12px] font-medium rounded-xl"
-                    >
-                      <Power size={12} className="mr-1.5" />{' '}
-                      {branch.isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                  </div>
-                  <p className="text-[12px] text-text-muted font-medium">
-                    {branch.phone || 'No contact'} • ID: {branch.id?.substring(0, 8).toUpperCase()}
-                  </p>
-                </div>
-                {/* Staff Roster */}
-                <div className="p-6">
-                  {/* DM Section */}
-                  {branch.managerName && (
-                    <div className="mb-6">
-                      <p className="text-[12px] font-bold text-text-muted font-medium mb-3">
-                        Branch Leadership
-                      </p>
-                      <div className="flex items-center gap-4 bg-surface-card rounded-xl p-4 border border-warning/20 shadow-sm">
-                        <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center border border-warning/20">
-                          <Crown size={18} className="text-warning" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-text-main tracking-tight">
-                            {branch.managerName}
-                          </p>
-                          <p className="text-[12px] text-warning font-medium">District Manager</p>
-                        </div>
-                        {branch.managerPhone && (
-                          <a
-                            href={`tel:${branch.managerPhone}`}
-                            className="text-[13px] text-primary-main font-bold flex items-center gap-1.5 hover:underline"
-                          >
-                            <Phone size={12} /> {branch.managerPhone}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Staff List */}
-                  <p className="text-[12px] font-bold text-text-muted font-medium mb-3">
-                    Branch Personnel
-                  </p>
-                  {!branchStaff[branch.id] ? (
-                    <div className="text-center py-12 text-[13px] text-text-muted font-medium animate-pulse">
-                      Loading roster...
-                    </div>
-                  ) : branchStaff[branch.id].length === 0 ? (
-                    <div className="text-center py-12 border border-dashed border-border-subtle/50 rounded-xl bg-bg-secondary/50">
-                      <Users size={32} className="mx-auto text-text-muted opacity-10 mb-3" />
-                      <p className="text-[13px] text-text-muted font-medium opacity-40">
-                        No staff assigned to this branch
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {branchStaff[branch.id].map((staff) => (
-                        <div
-                          key={staff.id}
-                          className="flex items-center gap-4 bg-surface-card rounded-xl p-4 border border-border-subtle/30 shadow-sm group  transition-all"
-                        >
-                          <div
-                            className={cn(
-                              'w-9 h-9 rounded-lg flex items-center justify-center text-[13px] font-bold border shadow-inner',
-                              staff.isActive
-                                ? 'bg-primary-main/10 text-primary-main border-primary-main/10'
-                                : 'bg-bg-secondary text-text-muted border-border-subtle',
-                            )}
-                          >
-                            {staff.fullName
-                              ?.split(' ')
-                              .map((n: string) => n[0])
-                              .join('')
-                              .substring(0, 2)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-text-main tracking-tight truncate group-hover:text-primary-main transition-colors">
-                              {staff.fullName}
-                            </p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[11px] text-text-muted font-medium">
-                                {staff.role?.replace(/_/g, ' ')}
-                              </span>
-                              <span className="w-1 h-1 bg-border-subtle rounded-full" />
-                              <span className="text-[11px] text-primary-main font-mono">
-                                {staff.commissionTier}x
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {staff.phone && (
-                              <a
-                                href={`tel:${staff.phone}`}
-                                className="text-text-muted hover:text-primary-main transition-colors"
-                              >
-                                <Phone size={14} />
-                              </a>
-                            )}
-                            <div
-                              className={cn(
-                                'w-2 h-2 rounded-full',
-                                staff.isActive ? 'bg-success' : 'bg-text-muted/30',
-                              )}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Create Branch Modal */}
-      <Modal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        title="Register New Branch"
-        subtitle="Initialize a regional operations hub"
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-5">
-          <TextField
-            label="Branch Name"
-            placeholder="e.g. Kazanchis Hub"
-            value={form.name}
-            onChange={(v) => setForm({ ...form, name: v })}
-          />
-          <TextField
-            label="System Code"
-            placeholder="e.g. KAZ-01"
-            value={form.code}
-            onChange={(v) => setForm({ ...form, code: v })}
-          />
-          <TextField
-            label="Address"
-            placeholder="Addis Ababa, ET"
-            value={form.address}
-            onChange={(v) => setForm({ ...form, address: v })}
-          />
-          <TextField
-            label="Phone"
-            placeholder="+251 ..."
-            value={form.phone}
-            onChange={(v) => setForm({ ...form, phone: v })}
-          />
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              className="flex-1 h-11 rounded-xl"
-              onClick={() => setShowCreate(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              className="flex-1 h-11 rounded-xl bg-text-main shadow-xl"
-              disabled={!form.name || !form.code}
-              onClick={handleCreateBranch}
-            >
-              Create Branch
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Assign DM Modal */}
-      <Modal
-        isOpen={!!showAssignDM}
-        onClose={() => setShowAssignDM(null)}
-        title="Assign District Manager"
-        subtitle="Select a DM to manage this branch"
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-5">
-          {availableDMs.length === 0 ? (
-            <div className="text-center py-8 border border-dashed border-border-subtle/50 rounded-xl">
-              <Crown size={32} className="mx-auto text-text-muted opacity-10 mb-3" />
-              <p className="text-[13px] text-text-muted font-medium opacity-40">
-                No available District Managers
-              </p>
-              <p className="text-[12px] text-text-muted mt-1">
-                All DMs are already assigned to branches, or none exist yet.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {availableDMs.map((dm) => (
-                <button
-                  key={dm.id}
-                  onClick={() => setSelectedDM(dm.id)}
-                  className={cn(
-                    'w-full flex items-center gap-4 p-4 rounded-xl border transition-all text-left',
-                    selectedDM === dm.id
-                      ? 'border-primary-main bg-primary-subtle/30 shadow-md'
-                      : 'border-border-subtle  bg-white',
-                  )}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-200">
-                    <Crown size={16} className="text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-text-main tracking-tight">{dm.fullName}</p>
-                    <p className="text-[12px] text-text-muted font-medium">
-                      {dm.phone || 'No phone'}
-                    </p>
-                  </div>
-                  {selectedDM === dm.id && <div className="w-3 h-3 rounded-full bg-primary-main" />}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              className="flex-1 h-11 rounded-xl"
-              onClick={() => setShowAssignDM(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 shadow-xl"
-              disabled={!selectedDM}
-              onClick={() => showAssignDM && assignDM(showAssignDM)}
-            >
-              Confirm Assignment
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Assign Staff Modal */}
-      <Modal
-        isOpen={!!showAddStaff}
-        onClose={() => setShowAddStaff(null)}
-        title="Assign Staff"
-        subtitle="Transfer existing personnel to this branch"
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-5">
-          {availableStaff.length === 0 ? (
-            <div className="text-center py-8 border border-dashed border-border-subtle/50 rounded-xl">
-              <Users size={32} className="mx-auto text-text-muted opacity-10 mb-3" />
-              <p className="text-[13px] text-text-muted font-medium opacity-40">
-                No available staff
-              </p>
-              <p className="text-[12px] text-text-muted mt-1">
-                All staff are already assigned to this branch, or none exist.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {availableStaff.map((staff) => (
-                <button
-                  key={staff.id}
-                  onClick={() => setStaffForm((prev) => ({ ...prev, personId: staff.id }))}
-                  className={cn(
-                    'w-full flex items-center gap-4 p-4 rounded-xl border transition-all text-left',
-                    staffForm.personId === staff.id
-                      ? 'border-primary-main bg-primary-subtle/30 shadow-md'
-                      : 'border-border-subtle  bg-white',
-                  )}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-bg-base flex items-center justify-center border border-border-subtle">
-                    <Users size={16} className="text-text-secondary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-text-main tracking-tight">
-                      {staff.fullName}
-                    </p>
-                    <p className="text-[12px] text-text-muted font-medium">
-                      {staff.role} • {staff.locationName || 'Unassigned'}
-                    </p>
-                  </div>
-                  {staffForm.personId === staff.id && (
-                    <div className="w-3 h-3 rounded-full bg-primary-main" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              className="flex-1 h-11 rounded-xl"
-              onClick={() => setShowAddStaff(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              className="flex-1 h-11 rounded-xl bg-text-main shadow-xl"
-              disabled={!staffForm.personId}
-              onClick={() => showAddStaff && addStaffToBranch(showAddStaff)}
-            >
-              Assign Staff
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {/* Modals */}
+      <CreateBranchModal isOpen={showCreate} onClose={() => setShowCreate(false)} form={form} setForm={setForm} onSubmit={handleCreateBranch} isSubmitting={isSubmitting} />
+      <EditBranchModal isOpen={!!showEdit} onClose={() => setShowEdit(null)} form={showEdit?.form || {}} setForm={(f: any) => setShowEdit({ ...showEdit, form: f })} onSubmit={handleEditBranch} isSubmitting={isSubmitting} />
+      <AssignDMModal isOpen={!!showAssignDM} onClose={() => setShowAssignDM(null)} availableDMs={availableDMs} selectedDM={selectedDM} setSelectedDM={setSelectedDM} onSubmit={() => showAssignDM && assignDM(showAssignDM)} isSubmitting={isSubmitting} />
+      <AssignStaffModal isOpen={!!showAddStaff} onClose={() => setShowAddStaff(null)} availableStaff={availableStaff} staffForm={staffForm} setStaffForm={setStaffForm} onSubmit={() => showAddStaff && addStaffToBranch(showAddStaff)} isSubmitting={isSubmitting} />
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUB-COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MobileKpis = ({ branches, activeBranches, assignedDMs, totalStaff }: any) => (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+    <KpiTile label="Total Branches" value={branches} icon={<Globe size={14} />} className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+    <KpiTile label="Operational" value={activeBranches} icon={<Activity size={14} />} className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+    <KpiTile label="Assigned DMs" value={assignedDMs} icon={<Crown size={14} />} className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+    <KpiTile label="Total Personnel" value={totalStaff} icon={<Users size={14} />} className="rounded-2xl md:rounded-[20px] p-4 h-24 md:h-28" />
+  </div>
+);
+
+const DesktopTable = ({ branches, expandedBranch, branchStaff, role, onToggleExpand, onToggleActive, onUnassignDM, onShowAssignDM, onShowAddStaff, onShowEdit }: any) => (
+  <div className="bg-surface-card rounded-[24px] shadow-sm border border-border-subtle/30 p-2 hidden md:block">
+    <div className="flex flex-col gap-1.5 p-6 border-b border-border-subtle/30">
+      <h2 className="text-[14px] font-black text-text-main">Regional Architecture Ledger</h2>
+      <p className="text-[12px] text-text-muted/60 font-medium">Official documentation of operational hubs and personnel</p>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left border-separate border-spacing-y-2 px-4">
+        <thead>
+          <tr className="text-text-muted font-medium text-[12px] uppercase tracking-wider">
+            <th className="pb-4 pt-6 px-4">Hub Designation</th>
+            <th className="pb-4 pt-6 px-4">Leadership</th>
+            <th className="pb-4 pt-6 px-4">Personnel</th>
+            <th className="pb-4 pt-6 px-4 text-center">Status</th>
+            <th className="pb-4 pt-6 px-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {branches.map((branch: any) => (
+            <React.Fragment key={branch.id}>
+              <tr 
+                className={cn("group transition-all cursor-pointer", !branch.isActive && 'opacity-60')}
+                onClick={() => onToggleExpand(branch.id)}
+              >
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-l border-border-subtle/30 rounded-l-2xl group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-[12px] bg-primary-main/10 flex items-center justify-center border border-primary-main/10 shrink-0">
+                      <Building2 size={16} className="text-primary-main" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-text-main font-bold text-[14px] tracking-tight leading-tight group-hover:text-primary-main transition-colors">
+                        {branch.name}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="text-[10px] font-mono border shadow-sm">{branch.code}</Badge>
+                        <span className="text-[11px] text-text-muted font-medium flex items-center gap-1"><MapPin size={10} /> {branch.address || 'No Address'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  {branch.managerName ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-[10px] bg-warning/10 flex items-center justify-center border border-warning/20">
+                        <Crown size={14} className="text-warning" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[13px] font-bold text-text-main tracking-tight leading-none">{branch.managerName}</p>
+                        <p className="text-[10px] text-warning font-bold uppercase tracking-wider">District Manager</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-[12px] font-bold text-error-main bg-error-main/10 px-2 py-1 rounded-lg w-fit border border-error-main/20">
+                      <ShieldCheck size={12} /> No Leadership
+                    </div>
+                  )}
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  <div className="flex items-center gap-2 bg-bg-base border border-border-subtle/30 rounded-xl px-3 py-1.5 w-fit shadow-sm">
+                    <Users size={14} className="text-text-muted/80" />
+                    <span className="text-[14px] font-black text-text-main leading-none">{branch.staffCount || 0}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Staff</span>
+                  </div>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all text-center">
+                  <Badge variant={branch.isActive ? 'primary' : 'warning'} className="text-[11px] uppercase tracking-wider font-bold shadow-sm border">
+                    {branch.isActive ? 'Operational' : 'Suspended'}
+                  </Badge>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-r border-border-subtle/30 rounded-r-2xl text-right group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
+                  <div className="flex items-center justify-end gap-2 text-text-muted/60 transition-transform duration-300">
+                    <ChevronDown size={20} className={cn("transition-transform duration-300", expandedBranch === branch.id && "rotate-180")} />
+                  </div>
+                </td>
+              </tr>
+              {expandedBranch === branch.id && (
+                <tr>
+                  <td colSpan={5} className="p-0">
+                    <div className="bg-bg-base border border-border-subtle/30 rounded-2xl mx-4 mb-4 mt-2 p-6 shadow-inner animate-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-[14px] font-black text-text-main flex items-center gap-2"><Network size={16} className="text-text-muted" /> Roster Configuration</h3>
+                        <div className="flex gap-2">
+                          {role === 'GENERAL_MANAGER' && (
+                            branch.managerName ? (
+                              <Button variant="outline" size="sm" onClick={() => onUnassignDM(branch.id)} className="h-9 text-[11px] font-bold rounded-xl border-warning/20 text-warning hover:bg-warning/10"><X size={12} className="mr-1.5" /> Remove DM</Button>
+                            ) : (
+                              <Button variant="primary" size="sm" onClick={() => onShowAssignDM(branch.id)} className="h-9 text-[11px] font-bold rounded-xl bg-warning hover:bg-warning/90 text-bg"><Crown size={12} className="mr-1.5" /> Appoint DM</Button>
+                            )
+                          )}
+                          <Button variant="outline" size="sm" onClick={() => onShowAddStaff(branch.id)} className="h-9 text-[11px] font-bold rounded-xl bg-surface-card border-border-subtle/30 shadow-sm"><UserPlus size={12} className="mr-1.5" /> Add Staff</Button>
+                          <Button variant="outline" size="sm" onClick={() => onShowEdit(branch)} className="h-9 text-[11px] font-bold rounded-xl bg-surface-card border-border-subtle/30 shadow-sm"><Edit size={12} className="mr-1.5" /> Edit</Button>
+                          <Button variant="outline" size="sm" onClick={() => onToggleActive(branch.id)} className="h-9 text-[11px] font-bold rounded-xl bg-surface-card border-border-subtle/30 shadow-sm"><Power size={12} className="mr-1.5" /> Toggle Power</Button>
+                        </div>
+                      </div>
+                      
+                      {!branchStaff[branch.id] ? (
+                        <div className="animate-pulse text-center text-text-muted/60 text-[12px] font-bold uppercase tracking-wider py-8">Fetching Data...</div>
+                      ) : branchStaff[branch.id].length === 0 ? (
+                        <div className="text-center py-10 border border-dashed border-border-subtle/30 rounded-xl">
+                          <Users size={24} className="mx-auto text-text-muted/20 mb-2" />
+                          <p className="text-[13px] font-bold text-text-muted/60">No Personnel Assigned</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-3">
+                          {branchStaff[branch.id].map((staff: any) => (
+                            <div key={staff.id} className="bg-surface-card border border-border-subtle/30 rounded-[14px] p-4 flex items-center gap-3 shadow-sm hover:border-primary-main/20 transition-all">
+                              <div className={cn("w-10 h-10 rounded-[10px] flex items-center justify-center font-bold text-[12px] border shrink-0", staff.isActive ? "bg-primary-main/10 text-primary-main border-primary-main/10" : "bg-bg-secondary text-text-muted border-border-subtle/30")}>
+                                {staff.fullName?.split(' ').map((n: string) => n[0]).join('').substring(0, 2)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-bold text-text-main truncate">{staff.fullName}</p>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider truncate">{staff.role.replace(/_/g, ' ')}</p>
+                              </div>
+                              {staff.phone && <a href={`tel:${staff.phone}`} className="text-text-muted/60 hover:text-primary-main"><Phone size={14} /></a>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const MobileGrid = ({ branches, expandedBranch, branchStaff, role, onToggleExpand, onToggleActive, onUnassignDM, onShowAssignDM, onShowAddStaff, onShowEdit }: any) => (
+  <div className="flex flex-col gap-3 md:hidden">
+    <div className="flex items-center justify-between px-1">
+      <p className="text-[15px] font-black text-text-main">Regional Hubs</p>
+      <span className="text-[12px] font-bold text-text-muted bg-bg-secondary px-2 py-1 rounded-md">{branches.length} Nodes</span>
+    </div>
+    <div className="flex flex-col gap-4">
+      {branches.map((branch: any) => (
+        <div key={branch.id} className={cn("bg-surface-card rounded-[20px] border shadow-sm transition-all overflow-hidden flex flex-col", branch.isActive ? "border-border-subtle/30" : "border-border-subtle/30 opacity-70 grayscale-[0.3]")}>
+          {/* Header */}
+          <div className="p-5 flex items-start justify-between border-b border-border-subtle/30 bg-bg-secondary/30" onClick={() => onToggleExpand(branch.id)}>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-[14px] bg-primary-main/10 flex items-center justify-center border border-primary-main/10 shrink-0 shadow-inner">
+                <Building2 size={20} className="text-primary-main" />
+              </div>
+              <div>
+                <h3 className="text-[15px] font-black text-text-main leading-tight tracking-tight flex items-center gap-2">
+                  {branch.name}
+                  <ChevronDown size={14} className={cn("text-text-muted/60 transition-transform", expandedBranch === branch.id && "rotate-180")} />
+                </h3>
+                <p className="text-[11px] text-text-muted font-mono mt-1 flex items-center gap-1.5"><Badge variant="default" className="text-[9px] px-1 py-0 border">{branch.code}</Badge></p>
+              </div>
+            </div>
+            <Badge variant={branch.isActive ? 'primary' : 'warning'} className="text-[10px] uppercase font-bold border shadow-sm">
+              {branch.isActive ? 'Active' : 'Suspended'}
+            </Badge>
+          </div>
+
+          {/* Details (Always visible) */}
+          <div className="p-4 grid grid-cols-2 gap-4 bg-surface-card">
+            <div className="col-span-2 flex items-center gap-2 text-[12px] font-bold text-text-muted/80">
+              <MapPin size={12} /> {branch.address || 'Address Not Provided'}
+            </div>
+            <div className="border border-border-subtle/30 rounded-xl p-3 bg-bg-secondary/50">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Leadership</p>
+              {branch.managerName ? (
+                <div className="flex items-center gap-2 text-[13px] font-bold text-text-main"><Crown size={12} className="text-warning" /> {branch.managerName.split(' ')[0]}</div>
+              ) : (
+                <div className="text-[11px] font-bold text-error-main">Unassigned</div>
+              )}
+            </div>
+            <div className="border border-border-subtle/30 rounded-xl p-3 bg-bg-secondary/50">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Personnel</p>
+              <div className="flex items-center gap-2 text-[13px] font-bold text-text-main"><Users size={12} className="text-text-muted" /> {branch.staffCount || 0} Staff</div>
+            </div>
+          </div>
+
+          {/* Expanded State */}
+          {expandedBranch === branch.id && (
+            <div className="p-4 border-t border-border-subtle/30 bg-bg-base/50 flex flex-col gap-4 animate-in slide-in-from-top-2">
+              <div className="flex flex-wrap gap-2">
+                {role === 'GENERAL_MANAGER' && (
+                  branch.managerName ? 
+                    <Button variant="outline" size="sm" onClick={() => onUnassignDM(branch.id)} className="h-9 flex-1 text-[11px] border-warning/20 text-warning">Drop DM</Button> :
+                    <Button variant="primary" size="sm" onClick={() => onShowAssignDM(branch.id)} className="h-9 flex-1 text-[11px] bg-warning text-bg border-none shadow-sm">Assign DM</Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => onShowAddStaff(branch.id)} className="h-9 flex-1 text-[11px] bg-surface-card">Add Staff</Button>
+                <Button variant="outline" size="sm" onClick={() => onShowEdit(branch)} className="h-9 w-10 p-0 flex items-center justify-center shrink-0 bg-surface-card"><Edit size={14} /></Button>
+                <Button variant="outline" size="sm" onClick={() => onToggleActive(branch.id)} className="h-9 w-10 p-0 flex items-center justify-center shrink-0 bg-surface-card"><Power size={14} /></Button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted ml-1 border-l-2 border-primary-main/50 pl-2">Roster Roster</p>
+                {!branchStaff[branch.id] ? (
+                  <div className="text-[11px] text-center text-text-muted py-4">Loading...</div>
+                ) : branchStaff[branch.id].length === 0 ? (
+                  <div className="text-[11px] text-center text-text-muted/60 py-4 border border-dashed border-border-subtle/30 rounded-xl">Empty Roster</div>
+                ) : (
+                  branchStaff[branch.id].map((staff: any) => (
+                    <div key={staff.id} className="flex items-center gap-3 bg-surface-card border border-border-subtle/30 rounded-[12px] p-3 shadow-sm">
+                      <div className="w-8 h-8 rounded-lg bg-bg-secondary flex items-center justify-center font-bold text-[11px] text-text-muted">{staff.fullName?.substring(0,2).toUpperCase()}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-bold text-text-main truncate">{staff.fullName}</p>
+                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider">{staff.role.replace(/_/g, ' ')}</p>
+                      </div>
+                      {staff.phone && <a href={`tel:${staff.phone}`} className="text-text-muted/60"><Phone size={14} /></a>}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Modals
+const CreateBranchModal = ({ isOpen, onClose, form, setForm, onSubmit, isSubmitting }: any) => (
+  <Modal isOpen={isOpen} onClose={onClose} title="Register New Hub" subtitle="Initialize a regional operations facility" maxWidth="max-w-md">
+    <div className="space-y-5">
+      <TextField label="Designation" placeholder="e.g. Kazanchis Hub" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+      <TextField label="System Code" placeholder="e.g. KAZ-01" value={form.code} onChange={(v) => setForm({ ...form, code: v })} />
+      <TextField label="Physical Address" placeholder="Addis Ababa, ET" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+      <TextField label="Operational Contact" placeholder="+251 ..." value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
+      <div className="flex gap-3 pt-2">
+        <Button variant="outline" className="flex-1 h-12 rounded-xl border-border-subtle/30 shadow-sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+        <Button variant="primary" className="flex-1 h-12 rounded-xl bg-text-main text-bg shadow-xl active:scale-95 transition-all" disabled={!form.name || isSubmitting} loading={isSubmitting} onClick={onSubmit}>Initialize</Button>
+      </div>
+    </div>
+  </Modal>
+);
+
+const EditBranchModal = ({ isOpen, onClose, form, setForm, onSubmit, isSubmitting }: any) => (
+  <Modal isOpen={isOpen} onClose={onClose} title="Update Hub Settings" subtitle="Modify existing branch details" maxWidth="max-w-md">
+    <div className="space-y-5">
+      <TextField label="Designation" placeholder="e.g. Kazanchis Hub" value={form.name || ''} onChange={(v) => setForm({ ...form, name: v })} />
+      <TextField label="System Code" placeholder="e.g. KAZ-01" value={form.code || ''} onChange={(v) => setForm({ ...form, code: v })} />
+      <TextField label="Physical Address" placeholder="Addis Ababa, ET" value={form.address || ''} onChange={(v) => setForm({ ...form, address: v })} />
+      <TextField label="Operational Contact" placeholder="+251 ..." value={form.phone || ''} onChange={(v) => setForm({ ...form, phone: v })} />
+      <div className="flex gap-3 pt-2">
+        <Button variant="outline" className="flex-1 h-12 rounded-xl border-border-subtle/30 shadow-sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+        <Button variant="primary" className="flex-1 h-12 rounded-xl bg-text-main text-bg shadow-xl active:scale-95 transition-all" disabled={!form.name || isSubmitting} loading={isSubmitting} onClick={onSubmit}>Save Changes</Button>
+      </div>
+    </div>
+  </Modal>
+);
+
+const AssignDMModal = ({ isOpen, onClose, availableDMs, selectedDM, setSelectedDM, onSubmit, isSubmitting }: any) => (
+  <Modal isOpen={isOpen} onClose={onClose} title="Appoint District Manager" subtitle="Assign a leader to this branch" maxWidth="max-w-md">
+    <div className="space-y-4">
+      <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        {availableDMs.length === 0 ? (
+          <div className="text-center py-8 text-text-muted text-[13px] border border-dashed rounded-xl">No available managers.</div>
+        ) : availableDMs.map((dm: any) => (
+          <button key={dm.id} onClick={() => setSelectedDM(dm.id)} className={cn("w-full flex items-center gap-4 p-4 rounded-xl border transition-all text-left", selectedDM === dm.id ? "border-warning bg-warning/5 shadow-sm" : "border-border-subtle/30 bg-surface-card")}>
+            <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center border border-warning/20 shrink-0"><Crown size={16} className="text-warning" /></div>
+            <div className="flex-1"><p className="text-[13px] font-bold text-text-main">{dm.fullName}</p><p className="text-[11px] text-text-muted">{dm.phone}</p></div>
+            {selectedDM === dm.id && <div className="w-3 h-3 rounded-full bg-warning" />}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-3 pt-2">
+        <Button variant="outline" className="flex-1 h-12 rounded-xl shadow-sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+        <Button variant="primary" className="flex-1 h-12 rounded-xl bg-warning hover:bg-warning/90 text-bg shadow-lg shadow-warning/20" disabled={!selectedDM || isSubmitting} loading={isSubmitting} onClick={onSubmit}>Appoint DM</Button>
+      </div>
+    </div>
+  </Modal>
+);
+
+const AssignStaffModal = ({ isOpen, onClose, availableStaff, staffForm, setStaffForm, onSubmit, isSubmitting }: any) => (
+  <Modal isOpen={isOpen} onClose={onClose} title="Transfer Personnel" subtitle="Reassign staff to this branch" maxWidth="max-w-md">
+    <div className="space-y-4">
+      <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        {availableStaff.length === 0 ? (
+          <div className="text-center py-8 text-text-muted text-[13px] border border-dashed rounded-xl">No available staff.</div>
+        ) : availableStaff.map((staff: any) => (
+          <button key={staff.id} onClick={() => setStaffForm({ personId: staff.id })} className={cn("w-full flex items-center gap-4 p-4 rounded-xl border transition-all text-left", staffForm.personId === staff.id ? "border-primary-main bg-primary-main/5 shadow-sm" : "border-border-subtle/30 bg-surface-card")}>
+            <div className="w-10 h-10 rounded-xl bg-bg-secondary flex items-center justify-center shrink-0 border border-border-subtle/30"><Briefcase size={16} className="text-text-muted" /></div>
+            <div className="flex-1"><p className="text-[13px] font-bold text-text-main">{staff.fullName}</p><p className="text-[11px] text-text-muted">{staff.role.replace(/_/g, ' ')}</p></div>
+            {staffForm.personId === staff.id && <div className="w-3 h-3 rounded-full bg-primary-main" />}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-3 pt-2">
+        <Button variant="outline" className="flex-1 h-12 rounded-xl shadow-sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+        <Button variant="primary" className="flex-1 h-12 rounded-xl bg-text-main text-bg shadow-xl" disabled={!staffForm.personId || isSubmitting} loading={isSubmitting} onClick={onSubmit}>Transfer</Button>
+      </div>
+    </div>
+  </Modal>
+);

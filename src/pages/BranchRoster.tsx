@@ -42,6 +42,7 @@ export default function BranchRoster() {
   const [staffTasks, setStaffTasks] = useState<any[]>([]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -150,6 +151,7 @@ export default function BranchRoster() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
+    setIsSubmitting(true);
     try {
       if (isEditing && selectedStaff) {
         const avatarUrl = await uploadAvatar(selectedStaff.id);
@@ -181,6 +183,8 @@ export default function BranchRoster() {
     } catch (err) {
       console.error(err);
       alert('Operation failed. Ensure all registry fields are valid.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -191,11 +195,14 @@ export default function BranchRoster() {
       )
     )
       return;
+    setIsSubmitting(true);
     try {
       await api.delete(`/people/${id}`);
       fetchRoster();
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -357,6 +364,7 @@ export default function BranchRoster() {
                   >
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity md:translate-y-0 translate-y-2 group-hover:translate-y-0">
                       <button
+                        disabled={isSubmitting}
                         onClick={() => {
                           setSelectedStaff(member);
                           setFormData({
@@ -370,13 +378,14 @@ export default function BranchRoster() {
                           setIsEditing(true);
                           setIsHiring(true);
                         }}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-bg-secondary hover:text-primary-main hover:bg-primary-main/10 transition-all text-text-muted"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-bg-secondary hover:text-primary-main hover:bg-primary-main/10 transition-all text-text-muted disabled:opacity-50"
                       >
                         <Edit3 size={12} />
                       </button>
                       <button
+                        disabled={isSubmitting}
                         onClick={() => handleDeactivate(member.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-bg-secondary hover:text-error-main hover:bg-error-main/10 transition-all text-text-muted"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-bg-secondary hover:text-error-main hover:bg-error-main/10 transition-all text-text-muted disabled:opacity-50"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -514,6 +523,7 @@ export default function BranchRoster() {
               variant="outline"
               className="flex-1 h-16 rounded-2xl text-[11px] font-medium border-border-subtle"
               onClick={() => setIsHiring(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
@@ -521,9 +531,11 @@ export default function BranchRoster() {
               type="submit"
               variant="primary"
               className="flex-1 h-16 rounded-2xl text-[11px] font-medium shadow-2xl shadow-primary-main/20"
+              disabled={isSubmitting || !formData.fullName || !formData.phone}
+              loading={isSubmitting}
             >
               {isEditing ? 'Update Registry' : 'Confirm Onboarding'}{' '}
-              <CheckCircle2 size={18} className="ml-3" />
+              {!isSubmitting && <CheckCircle2 size={18} className="ml-3" />}
             </Button>
           </div>
         </form>

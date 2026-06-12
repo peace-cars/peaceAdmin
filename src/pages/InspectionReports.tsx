@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
-import { fetchWithCache } from '../lib/cache';
+import { fetchWithCache, apiCache } from '../lib/cache';
 import { InspectionReportsPage as ReportsList } from '../components/dashboard/InspectionReportsPage';
 import { InspectionReportView } from '../components/dashboard/InspectionReportView';
 import { cn } from '../lib/utils';
@@ -113,6 +113,7 @@ export default function InspectionReports() {
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'MANAGER_REVIEW' | 'OFFER_MADE' | 'REJECTED'
   >('all');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchData = () => {
     fetchWithCache('/trade-in-requests', {}, (data) => {
@@ -129,8 +130,10 @@ export default function InspectionReports() {
   }, [session]);
 
   const handleApproveLead = async (id: string, price: number) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/approve`, { offerPrice: price });
+      apiCache.clear();
       setTradeIns((prev) =>
         prev.map((t) =>
           t.id === id ? { ...t, status: 'OFFER_MADE', final_dealer_offer_etb: price } : t,
@@ -139,16 +142,22 @@ export default function InspectionReports() {
       setSelectedReport(null);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleRejectLead = async (id: string, reason: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/reject`, { reason });
+      apiCache.clear();
       setTradeIns((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'REJECTED' } : t)));
       setSelectedReport(null);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

@@ -7,11 +7,13 @@ import { Badge } from '../ui/Badge';
 interface FinanceAuditorViewProps {
   budgets: any[];
   onDisburse: (id: string, amount: number) => void;
+  isSubmitting?: boolean;
 }
 
 export const FinanceAuditorView: React.FC<FinanceAuditorViewProps> = ({
   budgets,
-  onDisburse
+  onDisburse,
+  isSubmitting
 }) => {
   const pendingDisbursements = budgets.filter(b => b.status === 'APPROVED');
 
@@ -52,6 +54,8 @@ export const FinanceAuditorView: React.FC<FinanceAuditorViewProps> = ({
                 <Button 
                   variant="primary"
                   className="bg-success text-bg hover:bg-success/90 shrink-0 h-10 px-4 text-[13px] font-bold"
+                  disabled={isSubmitting}
+                  loading={isSubmitting}
                   onClick={() => onDisburse(b.id, b.amount_approved || b.amount_requested)}
                 >
                   Release Funds

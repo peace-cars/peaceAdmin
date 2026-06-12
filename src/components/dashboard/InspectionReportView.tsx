@@ -5,10 +5,13 @@ import { Badge } from '../ui/Badge';
 import { 
   CheckCircle2, CarFront, Search, Settings, FileText,
   ShieldCheck, AlertTriangle, User, ChevronRight, MapPin, Phone,
-  DollarSign, Tag, Calendar, ClipboardCheck, Printer, XCircle
+  DollarSign, Tag, Calendar, ClipboardCheck, Download, XCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import logo from '../../assets/logo.png';
+import jsPDF from 'jspdf';
+import domtoimage from 'dom-to-image-more';
+import { EvaluationReport } from '../documents/EvaluationReport';
 
 interface InspectionReportViewProps {
   isOpen: boolean;
@@ -17,6 +20,7 @@ interface InspectionReportViewProps {
   onApprove?: (id: string, price: number) => void;
   onReject?: (id: string, reason: string) => void;
   onRequestClarification?: (id: string, reason: string) => void;
+  isSubmitting?: boolean;
 }
 
 export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
@@ -25,7 +29,8 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
   lead,
   onApprove,
   onReject,
-  onRequestClarification
+  onRequestClarification,
+  isSubmitting
 }) => {
   if (!lead) return null;
 
@@ -36,6 +41,160 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
   const details = lead.vehicleDetails || {};
 
   const [activePhotoIdx, setActivePhotoIdx] = React.useState(0);
+  const [isDownloading, setIsDownloading] = React.useState(false);
+  const reportRef = React.useRef<HTMLDivElement>(null);
+  const printRef = React.useRef<HTMLDivElement>(null);
+
+  const printVehicleData = React.useMemo(() => ({
+    ...lead,
+    inspection: inspection,
+    plate_number: lead.plate || details.plate_code || 'Not Recorded',
+    make: details.make || lead.vehicle_make_model?.split(' ')[0] || (lead.vehicle && lead.vehicle.length < 35 && !lead.vehicle.toLowerCase().includes('i need') ? lead.vehicle.split(' ')[0] : 'Unspecified'),
+    model: details.model || lead.vehicle_make_model?.split(' ').slice(1).join(' ') || (lead.vehicle && lead.vehicle.length < 35 && !lead.vehicle.toLowerCase().includes('i need') ? lead.vehicle.split(' ').slice(1).join(' ') : 'Unspecified'),
+    year: details.year || 'Unknown',
+    mileage: details.mileage || 0,
+    fuel_type: details.fuel_type,
+    transmission: details.transmission,
+    price: lead.askingPrice || lead.user_asking_price_etb || 0,
+    condition: details.overall_condition || 'Not Graded',
+    customer: lead.customer || 'Unassigned',
+    phone: lead.phone || lead.contactPhone || 'No phone',
+    location: lead.location || 'Central Branch',
+    photos: lead.photos || [],
+  }), [lead, details, inspection]);
+
+  const downloadPDF = async () => {
+    if (!printRef.current) return;
+    setIsDownloading(true);
+    try {
+      const element = printRef.current;
+
+      // 1. Unlock the container so we capture full height
+      const prev = {
+        overflow:  element.style.overflow,
+        maxHeight: element.style.maxHeight,
+        height:    element.style.height,
+        display:   element.style.display,
+      };
+      element.style.display   = 'block';
+      element.style.overflow  = 'visible';
+      element.style.maxHeight = 'none';
+      element.style.height    = 'auto';
+
+      // Allow the browser to reflow so we can measure elements
+      await new Promise<void>(r => setTimeout(r, 200));
+
+      // SMART PAGINATION: Prevent elements from being sliced in half
+      const PAGE_WIDTH_PX = 800;
+      const PAGE_RATIO = 277 / 190; // jsPDF A4 usable height / usable width
+      const PAGE_HEIGHT_PX = PAGE_WIDTH_PX * PAGE_RATIO;
+
+      const avoidElements = Array.from(element.querySelectorAll('.avoid-slice')) as HTMLElement[];
+      
+      // Reset any previous dynamic margins
+      avoidElements.forEach(el => { el.style.marginTop = '0px'; });
+
+      // Sequentially adjust elements
+      for (const el of avoidElements) {
+        const rect = el.getBoundingClientRect();
+        const containerRect = element.getBoundingClientRect();
+        const offsetTop = rect.top - containerRect.top;
+        const offsetBottom = offsetTop + rect.height;
+        
+        const startPage = Math.floor(offsetTop / PAGE_HEIGHT_PX);
+        
+        // We add a tiny 10px buffer to the bottom so elements right on the edge don't get sliced
+        const endPage = Math.floor((offsetBottom + 10) / PAGE_HEIGHT_PX);
+        
+        // If element spans across a page boundary AND it can actually fit on a single page
+        if (startPage !== endPage && rect.height < PAGE_HEIGHT_PX) {
+          const nextPageBoundary = (startPage + 1) * PAGE_HEIGHT_PX;
+          const pushDown = nextPageBoundary - offsetTop + 20; // 20px padding at top of new page
+          el.style.marginTop = `${pushDown}px`;
+        }
+      }
+
+      // Allow the browser to reflow again with the new margins
+      await new Promise<void>(r => setTimeout(r, 200));
+
+      const captureW = element.scrollWidth;
+      const captureH = element.scrollHeight;
+      const scale    = 2; // retina quality
+
+      // dom-to-image-more uses SVG foreignObject — the browser renders
+      // everything natively, so oklch/oklab and all modern CSS just work.
+      const dataUrl = await (domtoimage as any).toPng(element, {
+        width:  captureW * scale,
+        height: captureH * scale,
+        bgcolor: '#ffffff',
+        style: {
+          transform:       `scale(${scale})`,
+          transformOrigin: 'top left',
+          width:  `${captureW}px`,
+          height: `${captureH}px`,
+        },
+      });
+
+      // 2. Restore original styles
+      element.style.overflow  = prev.overflow;
+      element.style.maxHeight = prev.maxHeight;
+      element.style.height    = prev.height;
+      element.style.display   = prev.display;
+
+      // 3. Load the captured image to get natural pixel dimensions
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise<void>(r => { img.onload = () => r(); });
+
+      const imgW = img.naturalWidth;
+      const imgH = img.naturalHeight;
+
+      // Draw onto a full canvas for slicing
+      const fullCanvas = document.createElement('canvas');
+      fullCanvas.width  = imgW;
+      fullCanvas.height = imgH;
+      const fCtx = fullCanvas.getContext('2d')!;
+      fCtx.fillStyle = '#ffffff';
+      fCtx.fillRect(0, 0, imgW, imgH);
+      fCtx.drawImage(img, 0, 0);
+
+      // 4. Paginate into A4
+      const pdf     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW   = pdf.internal.pageSize.getWidth();
+      const pageH   = pdf.internal.pageSize.getHeight();
+      const margin  = 10;
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2;
+      const imgHmm  = (imgH / imgW) * usableW;
+
+      let yMm  = 0;
+      let page = 0;
+
+      while (yMm < imgHmm) {
+        const sliceHmm = Math.min(usableH, imgHmm - yMm);
+        const srcYpx   = Math.round((yMm      / imgHmm) * imgH);
+        const srcHpx   = Math.round((sliceHmm / imgHmm) * imgH);
+
+        const slice  = document.createElement('canvas');
+        slice.width  = imgW;
+        slice.height = srcHpx;
+        const sCtx   = slice.getContext('2d')!;
+        sCtx.fillStyle = '#ffffff';
+        sCtx.fillRect(0, 0, imgW, srcHpx);
+        sCtx.drawImage(fullCanvas, 0, srcYpx, imgW, srcHpx, 0, 0, imgW, srcHpx);
+
+        if (page > 0) pdf.addPage();
+        pdf.addImage(slice.toDataURL('image/png'), 'PNG', margin, margin, usableW, sliceHmm);
+
+        yMm  += sliceHmm;
+        page += 1;
+      }
+
+      pdf.save(`Inspection-Report-PCS-${leadIdSafe}.pdf`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const categories = React.useMemo(() => [
     { id: '1', name: 'Exterior & Body', icon: CarFront, data: checklist.exterior || [] },
@@ -66,43 +225,43 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
       subtitle="Complete technical and pricing evaluation"
       maxWidth="max-w-5xl"
     >
-      <div className="space-y-0 pb-0 relative bg-surface-card overflow-hidden flex flex-col font-sans print:bg-white -mx-6 px-6 pt-4">
-        
-        <style dangerouslySetInnerHTML={{ __html: `
-          @media print {
-            .no-print { display: none !important; }
-            .print-break-inside-avoid { page-break-inside: avoid; }
-            .print-shadow-none { box-shadow: none !important; }
-            .print-border { border: 1px solid #e5e7eb !important; }
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          }
-        `}} />
+      <div className="fixed top-[-9999px] left-[-9999px] w-[800px] z-[-1]">
+        <div ref={printRef} className="bg-white hidden print:block" style={{ display: isDownloading ? 'block' : 'none' }}>
+          <EvaluationReport vehicle={printVehicleData} date={evalDate} />
+        </div>
+      </div>
 
-        <div className="relative z-10 space-y-8 overflow-y-auto pr-2 pb-8 print:m-0 print:p-0 print:shadow-none print:overflow-visible print:max-h-none">
+      <div className="space-y-0 pb-0 relative bg-surface-card overflow-hidden flex flex-col font-sans -mx-6 px-6 pt-4">
+        
+        <div ref={reportRef} className="relative z-10 space-y-8 overflow-y-auto pr-2 pb-8">
           
-          {/* Header */}
-          <div className="flex items-start justify-between border-b border-border-subtle pb-6 print:border-b-2 print:border-black">
-             <div className="flex gap-4 items-center">
-                <div className="w-14 h-14 bg-bg-secondary flex items-center justify-center rounded-xl border border-border-subtle shrink-0 print:border print:border-black overflow-hidden">
-                   <img src={logo} alt="Peace Cars" className="w-full h-full object-contain p-2" />
-                </div>
-                <div>
-                   <h1 className="text-[20px] font-bold text-text-main">Vehicle Appraisal Report</h1>
-                   <p className="text-[14px] text-text-muted mt-0.5">Peace Car Sell • Asset Valuation Division</p>
-                </div>
-             </div>
-             <div className="text-right space-y-3">
-                <div className="flex items-center justify-end gap-2 no-print">
-                  <Badge variant="primary">Verified Record</Badge>
-                  <Button variant="outline" size="sm" onClick={() => window.print()}>
-                    <Printer size={16} className="mr-2" /> Print
-                  </Button>
-                </div>
-                <div>
-                   <p className="text-[13px] font-medium text-text-muted">Reference ID</p>
-                   <p className="text-[15px] font-mono font-semibold text-text-main">PCS-{leadIdSafe}</p>
-                </div>
-             </div>
+          {/* Header — stacks on mobile, side-by-side on md+ */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between border-b border-border-subtle pb-6">
+            {/* Branding */}
+            <div className="flex gap-4 items-center min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-bg-secondary flex items-center justify-center rounded-xl border border-border-subtle shrink-0 overflow-hidden">
+                <img src={logo} alt="Peace Cars" className="w-full h-full object-contain p-2" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-[17px] sm:text-[20px] font-bold text-text-main leading-tight">Vehicle Appraisal Report</h1>
+                <p className="text-[12px] sm:text-[14px] text-text-muted mt-0.5 truncate">Peace Car Sell • Asset Valuation Division</p>
+              </div>
+            </div>
+
+            {/* Actions + Reference */}
+            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <Badge variant="primary">Verified</Badge>
+                <Button variant="outline" size="sm" onClick={downloadPDF} disabled={isDownloading}>
+                  <Download size={14} className="mr-1.5" />
+                  {isDownloading ? 'Generating...' : 'Download PDF'}
+                </Button>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] sm:text-[13px] font-medium text-text-muted">Reference ID</p>
+                <p className="text-[13px] sm:text-[15px] font-mono font-semibold text-text-main">PCS-{leadIdSafe}</p>
+              </div>
+            </div>
           </div>
 
           {/* SECTION 1: VEHICLE OVERVIEW */}
@@ -356,6 +515,8 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
                     <Button 
                       variant="outline" 
                       className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
+                      disabled={isSubmitting}
+                      loading={isSubmitting}
                       onClick={() => {
                         const reason = prompt('Please specify what clarification is needed from the customer:');
                         if (reason) {
@@ -370,6 +531,8 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
                   <Button 
                     variant="outline" 
                     className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                    disabled={isSubmitting}
+                    loading={isSubmitting}
                     onClick={() => {
                       const reason = prompt('Please provide a reason for rejecting this vehicle:');
                       if (reason) {
@@ -382,7 +545,8 @@ export const InspectionReportView: React.FC<InspectionReportViewProps> = ({
                   </Button>
                   <Button 
                     variant="primary" 
-                    disabled={!hasInspection}
+                    disabled={!hasInspection || isSubmitting}
+                    loading={isSubmitting}
                     onClick={() => {
                       const price = prompt('Enter the final approved offer price (ETB):', lead.user_asking_price_etb || lead.askingPrice || 0);
                       if (price) {

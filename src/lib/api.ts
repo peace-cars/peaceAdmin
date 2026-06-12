@@ -1,5 +1,83 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 
+// ─── Token Refresh Lock ────────────────────────────────────────────────────
+// Prevents race conditions: if 5 parallel requests get a 401, only one
+// /auth/refresh call is made. All others wait for the lock to resolve.
+let isRefreshing = false;
+let refreshQueue: Array<(token: string | null) => void> = [];
+
+function onTokenRefreshed(newToken: string | null) {
+  refreshQueue.forEach(cb => cb(newToken));
+  refreshQueue = [];
+}
+
+async function attemptTokenRefresh(): Promise<string | null> {
+  if (isRefreshing) {
+    // Queue this caller and wait for the in-flight refresh to complete
+    return new Promise(resolve => refreshQueue.push(resolve));
+  }
+
+  isRefreshing = true;
+  try {
+    const sessionStr = localStorage.getItem('admin_session');
+    const session = sessionStr ? JSON.parse(sessionStr) : null;
+    const refreshToken = session?.refresh_token;
+
+    const res = await fetch(`${getApiUrl()}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      // Refresh token is also expired — force logout
+      forceLogout();
+      onTokenRefreshed(null);
+      return null;
+    }
+
+    const result = await res.json();
+    const payload = result?.data ?? result;
+    const newAccessToken = payload.session?.access_token || payload.access_token;
+    const newRefreshToken = payload.session?.refresh_token || payload.refresh_token;
+    const newExpiresAt = payload.session?.expires_at || Math.floor(Date.now() / 1000) + 3600;
+
+    if (newAccessToken && session) {
+      const updatedSession = {
+        ...session,
+        access_token: newAccessToken,
+        refresh_token: newRefreshToken || session.refresh_token,
+        expires_at: newExpiresAt,
+      };
+      localStorage.setItem('admin_session', JSON.stringify(updatedSession));
+      console.log('[Admin API] Token refresh successful via interceptor.');
+    }
+
+    onTokenRefreshed(newAccessToken || null);
+    return newAccessToken || null;
+  } catch (err) {
+    console.error('[Admin API] Token refresh failed:', err);
+    forceLogout();
+    onTokenRefreshed(null);
+    return null;
+  } finally {
+    isRefreshing = false;
+  }
+}
+
+function forceLogout() {
+  console.warn('[Admin API] Forcing logout due to invalid session.');
+  localStorage.removeItem('admin_session');
+  localStorage.removeItem('admin_role');
+  localStorage.removeItem('admin_location');
+  localStorage.removeItem('admin_selected_branch');
+  // Redirect to login — works outside of React context
+  if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+    window.location.href = '/login';
+  }
+}
+
 const getApiUrl = () => {
   const isNative = Capacitor.isNativePlatform();
   const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
@@ -114,8 +192,10 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-          const error = await response.json().catch(() => ({ message: 'API request failed' }));
-          throw new Error(error.message || 'API request failed');
+          const errorBody = await response.json().catch(() => ({ message: 'API request failed' }));
+          const err: any = new Error(errorBody.message || 'API request failed');
+          err.status = response.status;
+          throw err;
         }
         rawData = await response.json();
       } catch (err: any) {
@@ -135,38 +215,51 @@ export async function apiFetch<T>(endpoint: string, options: any = {}): Promise<
     return rawData;
   };
 
-  let retries = isCacheable ? 1 : 0;
-  
-  while (true) {
-    try {
-      const result = await executeRequest();
-      
-      // Success: Update cache if it's a GET request
-      if (isCacheable) {
-        setCachedData(cacheKey, result);
-      }
-      
-      return result;
-    } catch (error) {
-      if (retries > 0) {
-        retries--;
-        console.warn(`[API] Retrying ${endpoint}...`);
-        await new Promise(r => setTimeout(r, 2000)); // 2s delay
-        continue;
-      }
+  try {
+    return await executeRequest();
+  } catch (error: any) {
+    // ─── 401 Interceptor ──────────────────────────────────────────────────
+    // If Unauthorized, try to silently refresh the token and retry once.
+    if (error?.status === 401) {
+      console.warn(`[Admin API] 401 on ${endpoint} — attempting token refresh...`);
+      const newToken = await attemptTokenRefresh();
 
-      // Failure: Try to return cached data for GET requests
-      if (isCacheable) {
-        const cached = await getCachedData(cacheKey);
-        if (cached) {
-          console.warn(`[API] Serving offline cache for ${endpoint}`);
-          return cached;
+      if (newToken) {
+        // Retry the original request with the fresh token
+        const retryHeaders = {
+          ...headers,
+          'Authorization': `Bearer ${newToken}`,
+        };
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          const retryRes = await fetch(url, { ...options, headers: retryHeaders, credentials: 'include', signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (!retryRes.ok) {
+            const err = await retryRes.json().catch(() => ({ message: 'Retry failed' }));
+            throw new Error(err.message);
+          }
+          const retryData = await retryRes.json();
+          const result = (retryData && typeof retryData === 'object' && 'success' in retryData) ? retryData.data : retryData;
+          if (isCacheable) setCachedData(cacheKey, result);
+          return result;
+        } catch (retryErr) {
+          // Retry also failed — fall through to cache/throw
         }
       }
-      
-      console.error('[API] Fatal Error:', error);
-      throw error;
     }
+
+    // Failure: Try to return cached data for GET requests
+    if (isCacheable) {
+      const cached = await getCachedData(cacheKey);
+      if (cached) {
+        console.warn(`[API] Serving offline cache for ${endpoint}`);
+        return cached;
+      }
+    }
+    
+    console.error('[API] Fatal Error:', error);
+    throw error;
   }
 }
 

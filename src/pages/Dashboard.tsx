@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
-import { fetchWithCache } from "../lib/cache";
+import { fetchWithCache, apiCache } from "../lib/cache";
 import { Button } from "../components/ui/Button";
 import { Badge } from "../components/ui/Badge";
 import { Tooltip } from "../components/ui/Tooltip";
@@ -61,12 +61,14 @@ export default function Dashboard() {
     () => localStorage.getItem('admin_selected_branch') || 'ALL'
   );
   const [isBranchPickerOpen, setIsBranchPickerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Persist branch selection across pages
   const selectBranch = (id: string, name?: string) => {
     setSelectedBranch(id);
     localStorage.setItem('admin_selected_branch', id);
     localStorage.setItem('admin_selected_branch_name', id === 'ALL' ? 'ALL BRANCHES' : (name || 'Branch'));
+    apiCache.clear(); // Bust stale cache so fresh branch-scoped data is fetched
     setIsBranchPickerOpen(false);
   };
 
@@ -84,7 +86,11 @@ export default function Dashboard() {
 
     const doFetch = (url: string, onData: (data: any) => void) => {
       pendingRequests++;
-      fetchWithCache(url, {}, onData).catch(console.error).finally(checkComplete);
+      fetchWithCache(url, {}, (data) => {
+        onData(data);
+        // Instant turn off skeleton if cache hit
+        setLoadingMetrics(false);
+      }).catch(console.error).finally(checkComplete);
     };
 
     doFetch(`/staff-performance/leaderboard`, data => setLeaderboard(Array.isArray(data) ? data : []));
@@ -141,6 +147,7 @@ export default function Dashboard() {
   // Actions
   const assignTaskToStaff = async (tradeInId: string, staffId: string) => {
     if (!staffId) return;
+    setIsSubmitting(true);
     try {
        await api.post('/staff-tasks', {
           assigned_to: staffId,
@@ -151,74 +158,102 @@ export default function Dashboard() {
        });
        
        await api.patch(`/trade-in-requests/${tradeInId}/status`, { status: 'INSPECTION_PENDING' });
+       apiCache.clear();
        setTradeIns(tradeIns.map(t => t.id === tradeInId ? { ...t, status: 'INSPECTION_PENDING' } : t));
     } catch(e) {
        console.error("Assignment failed", e);
+    } finally {
+       setIsSubmitting(false);
     }
   };
 
   const escalateToGM = async (tradeInId: string) => {
+    setIsSubmitting(true);
     try {
        await api.patch(`/trade-in-requests/${tradeInId}/status`, { status: 'ESCALATED_TO_GM' });
+       apiCache.clear();
        setTradeIns(tradeIns.map(t => t.id === tradeInId ? { ...t, status: 'ESCALATED_TO_GM' } : t));
     } catch(e) {
        console.error(e);
+    } finally {
+       setIsSubmitting(false);
     }
   };
 
   const approveListing = async (tradeInId: string, price: number) => {
     if (!window.confirm(`Approve and list this vehicle?`)) return;
+    setIsSubmitting(true);
     try {
        await api.post(`/vehicles/promote/${tradeInId}`, { retailPrice: price });
+       apiCache.clear();
        setTradeIns(tradeIns.map(t => t.id === tradeInId ? { ...t, status: 'ACCEPTED' } : t));
     } catch(e) {
        console.error(e);
+    } finally {
+       setIsSubmitting(false);
     }
   };
 
   const handleApproveLead = async (id: string, price: number) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/approve`, { offerPrice: price });
+      apiCache.clear();
       setTradeIns(tradeIns.map(t => t.id === id ? { ...t, status: 'OFFER_MADE', final_dealer_offer_etb: price } : t));
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleRejectLead = async (id: string, reason: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/reject`, { reason });
+      apiCache.clear();
       setTradeIns(tradeIns.map(t => t.id === id ? { ...t, status: 'REJECTED' } : t));
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleRequestClarification = async (id: string, reason: string) => {
+    setIsSubmitting(true);
     try {
       await api.patch(`/trade-in-requests/${id}/status`, { status: 'CLARIFICATION_REQUIRED', notes: reason });
+      apiCache.clear();
       setTradeIns(tradeIns.map(t => t.id === id ? { ...t, status: 'CLARIFICATION_REQUIRED' } : t));
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const updateExchangeRate = () => {
     const newRate = prompt('Enter USD to ETB rate:', exchangeRate);
     if (newRate) {
+      setIsSubmitting(true);
       api.patch('/settings/exchange-rate', { rate: newRate })
         .then(() => setExchangeRate(newRate))
-        .catch(console.error);
+        .catch(console.error)
+        .finally(() => setIsSubmitting(false));
     }
   };
 
   const disburseFunds = (id: string, amount: number) => {
     if (!window.confirm(`Confirm disbursement of ${amount.toLocaleString()} ETB?`)) return;
+    setIsSubmitting(true);
     api.patch(`/staff-budgets/${id}/disburse`, {})
       .then(() => {
+        apiCache.clear();
         setBudgets(budgets.map(bg => bg.id === id ? { ...bg, status: 'DISBURSED' } : bg));
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setIsSubmitting(false));
   };
 
   const totalNetProfit = profitability.reduce((sum, item) => sum + (Number(item.netProfit) || 0), 0);
@@ -310,8 +345,48 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {/* Welcome Header */}
-      <div className="pb-6 border-b border-border-subtle/30 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* ─── DESKTOP STICKY HEADER ─── */}
+      <div className="hidden md:block sticky top-0 z-30 -mx-4 md:-mx-8 -mt-5 md:-mt-8 border-b border-border-subtle/30 bg-bg-base/95 px-4 py-4 shadow-sm backdrop-blur-md md:px-8">
+        <div className="rounded-[28px] border border-border-subtle/70 bg-surface-card/95 p-4 shadow-[0_18px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl md:p-5">
+          <div className="flex items-center justify-between gap-4">
+             <div className="space-y-1">
+                <p className="text-[13px] text-text-muted/60">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                <h1 className="text-xl font-black text-text-main tracking-tight">Welcome back, {ADMIN_NAME.split(' ')[0]}</h1>
+                 <div className="flex items-center gap-2 mt-1.5">
+                   {LOCATION_NAME && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(LOCATION_NAME) && (
+                     <>
+                       <div className="flex items-center gap-1.5 text-[13px] text-text-muted">
+                          <Building2 size={14} className="text-primary-main" /> {LOCATION_NAME}
+                       </div>
+                       <span className="w-1 h-1 bg-border-subtle/30 rounded-full" />
+                     </>
+                   )}
+                   <Badge variant="primary">{(role || '').replace(/_/g, ' ')}</Badge>
+                </div>
+             </div>
+             
+             {/* Branch Filter Dropdown */}
+            {role === 'GENERAL_MANAGER' && (
+              <div className="flex items-center gap-2">
+                 <span className="text-[13px] font-medium text-text-muted">Viewing:</span>
+                 <select 
+                   className="bg-surface-card border border-border-subtle text-[13px] md:text-[14px] font-semibold h-10 px-3 pr-8 rounded-xl text-text-main outline-none focus:border-primary-main/50 appearance-none cursor-pointer shadow-sm transition-all"
+                   value={selectedBranch}
+                   onChange={(e) => { const id = e.target.value; const branch = dmBranches.find((b) => b.id === id); selectBranch(id, branch?.name || branch?.code); }}
+                 >
+                   <option value="ALL">National Overview</option>
+                   {dmBranches.map(b => (
+                     <option key={b.id} value={b.id}>{b.name || b.code}</option>
+                   ))}
+                 </select>
+               </div>
+             )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── MOBILE WELCOME HEADER ─── */}
+      <div className="md:hidden pb-6 border-b border-border-subtle/30 flex flex-col gap-4">
          <div className="space-y-1">
             <p className="text-[13px] text-text-muted/60">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
             <h1 className="text-2xl font-bold text-text-main tracking-tight">Welcome back, {ADMIN_NAME.split(' ')[0]}</h1>
@@ -327,27 +402,13 @@ export default function Dashboard() {
                <Badge variant="primary">{(role || '').replace(/_/g, ' ')}</Badge>
             </div>
          </div>
-         
-         {/* Branch Filter Dropdown */}
-        {role === 'GENERAL_MANAGER' && (
-          <div className="flex items-center gap-2">
-             <span className="text-[13px] font-medium text-text-muted">Viewing:</span>
-             <select 
-               className="bg-surface-card border border-border-subtle text-[13px] md:text-[14px] font-semibold h-10 px-3 pr-8 rounded-xl text-text-main outline-none focus:border-primary-main/50 appearance-none cursor-pointer shadow-sm transition-all"
-               value={selectedBranch}
-               onChange={(e) => setSelectedBranch(e.target.value)}
-             >
-               <option value="ALL">National Overview</option>
-               {dmBranches.map(b => (
-                 <option key={b.id} value={b.id}>{b.name || b.code}</option>
-               ))}
-             </select>
-           </div>
-         )}
       </div>
 
-      <div className="space-y-8">
-        {role === "GENERAL_MANAGER" && (
+      {/* ─── MAIN CONTENT GRID ─── */}
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr] mt-6">
+        {/* LEFT COLUMN: Main Dashboard Views */}
+        <div className="space-y-8">
+          {role === "GENERAL_MANAGER" && (
           <>
             <GeneralManagerView 
               loadingMetrics={loadingMetrics}
@@ -360,11 +421,13 @@ export default function Dashboard() {
               dmBranches={dmBranches}
               budgets={budgets}
               branchStaff={branchStaff}
+              selectedBranchId={selectedBranch}
               onUpdateExchangeRate={updateExchangeRate}
               onApproveListing={approveListing}
               onApprove={handleApproveLead}
               onReject={handleRejectLead}
               onViewReport={(lead) => setSelectedReport(lead)}
+              isSubmitting={isSubmitting}
             />
             <div className="my-10" />
           </>
@@ -441,11 +504,108 @@ export default function Dashboard() {
               onReject={handleRejectLead}
               onViewReport={(lead) => setSelectedReport(lead)}
               onEscalate={escalateToGM}
+              isSubmitting={isSubmitting}
             />
 
-            <div className="my-10 border-t border-border-subtle/30" />
+          </>
+        )}
 
-            {/* Quick Links */}
+        {role === "FINANCE_AUDITOR" && (
+          <FinanceAuditorView 
+            budgets={budgets}
+            onDisburse={disburseFunds}
+            isSubmitting={isSubmitting}
+          />
+        )}
+
+        {role === "STAFF" && (
+          <StaffView 
+            tasks={staffTasks}
+            onStartInspection={(task) => {
+              setSelectedTask(task);
+              setIsInspectionModalOpen(true);
+            }}
+          />
+        )}
+
+        {role === "BROKER" && (
+           <div className="bg-surface-card rounded-2xl border border-border-subtle border-dashed py-16 text-center flex flex-col items-center justify-center gap-4">
+             <CarFront className="text-text-muted opacity-20" size={40} />
+             <p className="text-[15px] text-text-muted max-w-xs">Referral hub active. Start an asset evaluation.</p>
+             <Button variant="primary" size="lg">Initiate Lead</Button>
+           </div>
+        )}
+        </div>
+
+        {/* ─── DESKTOP SIDEBAR ─── */}
+        <aside className="hidden space-y-6 xl:block">
+          {(role === "DISTRICT_MANAGER" || role === "GENERAL_MANAGER") && (
+            <>
+              <div className="rounded-[30px] border border-border-subtle/70 bg-surface-card/95 p-5 shadow-[0_18px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                  Control Center
+                </p>
+                <h3 className="mt-2 text-lg font-black tracking-tight text-text-main">Quick Links</h3>
+                <div className="mt-4 space-y-3">
+                  {[
+                    { label: 'Inspection Reports', desc: 'Review technician submissions', href: '/inspections', icon: <ShieldCheck size={18} />, color: 'text-primary-main bg-primary-main/10' },
+                    { label: 'Acquisitions Pipeline', desc: 'Full lead management board', href: '/acquisitions', icon: <CarFront size={18} />, color: 'text-success bg-success/10' },
+                    { label: 'Branch Staff', desc: 'Manage your team', href: '/staff', icon: <Users size={18} />, color: 'text-primary-main bg-primary-main/10' },
+                  ].map(link => (
+                    <a 
+                      key={link.label}
+                      href={link.href} 
+                      className="bg-bg-secondary border border-border-subtle/30 rounded-2xl p-4 flex items-center gap-3.5 group hover:bg-surface-card active:scale-[0.98] transition-all"
+                    >
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", link.color)}>
+                        {link.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-text-main">{link.label}</p>
+                      </div>
+                      <ChevronRight size={16} className="text-text-muted/40 group-hover:text-primary-main group-hover:translate-x-1 transition-all shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[30px] border border-border-subtle/70 bg-surface-card/95 p-5 shadow-[0_18px_40px_-22px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Rankings</p>
+                 <h3 className="mt-2 text-lg font-black tracking-tight text-text-main">Top Performers</h3>
+                 <div className="mt-4 space-y-2">
+                    {leaderboard.slice(0, 5).map((agent, idx) => (
+                      <Tooltip key={agent.id} content={`Role: ${agent.role?.replace(/_/g, ' ')}`}>
+                        <div className="flex items-center justify-between p-3 rounded-2xl border border-border-subtle/30 bg-bg-secondary hover:bg-surface-card transition-colors cursor-help">
+                          <div className="flex items-center gap-3">
+                             <div className={cn(
+                               "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-[13px]",
+                               idx === 0 ? "bg-warning/10 text-warning" : "bg-bg-base text-text-muted"
+                             )}>
+                               {idx === 0 ? <Trophy size={14} /> : `${idx + 1}`}
+                             </div>
+                             <div>
+                               <p className="text-[14px] font-bold text-text-main leading-tight">{agent.fullName}</p>
+                               <p className="text-[11px] text-text-muted/60 capitalize mt-0.5">{agent.role?.replace(/_/g, ' ').toLowerCase()}</p>
+                             </div>
+                          </div>
+                          <div className="text-right">
+                             <p className="text-[15px] font-black text-text-main">{agent.totalSales || 0}</p>
+                             <p className="text-[10px] text-text-muted/60 uppercase">settled</p>
+                          </div>
+                        </div>
+                      </Tooltip>
+                    ))}
+                 </div>
+              </div>
+            </>
+          )}
+        </aside>
+      </div>
+
+      {/* MOBILE ONLY: Quick Links & Leaderboard at the bottom */}
+      <div className="xl:hidden space-y-8 mt-8">
+        {(role === "DISTRICT_MANAGER" || role === "GENERAL_MANAGER") && (
+          <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {[
                 { label: 'Inspection Reports', desc: 'Review technician submissions', href: '/inspections', icon: <ShieldCheck size={18} />, color: 'text-primary-main bg-primary-main/10' },
@@ -469,7 +629,6 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Leaderboard */}
             <div className="space-y-3">
                <div className="px-1">
                   <h2 className="text-[15px] font-semibold text-text-main">Top Performers</h2>
@@ -502,31 +661,6 @@ export default function Dashboard() {
             </div>
           </>
         )}
-
-        {role === "FINANCE_AUDITOR" && (
-          <FinanceAuditorView 
-            budgets={budgets}
-            onDisburse={disburseFunds}
-          />
-        )}
-
-        {role === "STAFF" && (
-          <StaffView 
-            tasks={staffTasks}
-            onStartInspection={(task) => {
-              setSelectedTask(task);
-              setIsInspectionModalOpen(true);
-            }}
-          />
-        )}
-
-        {role === "BROKER" && (
-           <div className="bg-surface-card rounded-2xl border border-border-subtle border-dashed py-16 text-center flex flex-col items-center justify-center gap-4">
-             <CarFront className="text-text-muted opacity-20" size={40} />
-             <p className="text-[15px] text-text-muted max-w-xs">Referral hub active. Start an asset evaluation.</p>
-             <Button variant="primary" size="lg">Initiate Lead</Button>
-           </div>
-        )}
       </div>
 
       <LogViewerModal 
@@ -544,6 +678,7 @@ export default function Dashboard() {
         onApprove={handleApproveLead}
         onReject={handleRejectLead}
         onRequestClarification={handleRequestClarification}
+        isSubmitting={isSubmitting}
       />
 
       {selectedTask && (

@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Heart,
   Network,
+  Archive,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -888,7 +889,7 @@ const AssetDetailsModal = ({ isOpen, car, onClose, onEdit }: { isOpen: boolean; 
   if (!car) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`${car.year} ${car.make} ${car.model}`} size="5xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`${car.year} ${car.make} ${car.model}`} maxWidth="max-w-5xl">
       <div className="relative pb-10 bg-bg-base overflow-y-auto max-h-[85vh] no-scrollbar">
         
         {/* HERO SECTION */}

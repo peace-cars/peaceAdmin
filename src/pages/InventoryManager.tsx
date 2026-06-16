@@ -1645,6 +1645,7 @@ const InventoryManager = () => {
               inventoryCount={inventory.length}
               branchCount={branches.length}
               archiveCount={archiveCount}
+              loading={false}
             />
 
             {/* 2-column vehicle grid */}
@@ -1657,6 +1658,7 @@ const InventoryManager = () => {
                 setSelectedAsset(car);
                 setPrintReceiptOpen(true);
               }}
+              loading={false}
             />
           </div>
 
@@ -1670,6 +1672,7 @@ const InventoryManager = () => {
               setSelectedAsset(car);
               setPrintReceiptOpen(true);
             }}
+            loading={false}
           />
         </div>
 

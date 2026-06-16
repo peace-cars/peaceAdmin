@@ -40,6 +40,7 @@ import { EvaluationReport } from '../components/documents/EvaluationReport';
 import { InspectionReportView } from '../components/dashboard/InspectionReportView';
 import { AcquisitionDossierModal } from '../components/ui/AcquisitionDossierModal';
 import { ProgressiveImage } from '../components/ui/ProgressiveImage';
+import { SkeletonKpi } from '../components/ui/Skeleton';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -449,6 +450,7 @@ const DesktopKanban: React.FC<DesktopKanbanProps> = ({
           viewMode={viewMode}
           getTitle={getTitle}
           onSelect={onSelect}
+          loading={false}
         />
       </div>
     ))}
@@ -711,7 +713,7 @@ const Acquisitions = () => {
         </div>
 
         {/* Mobile KPI cards */}
-        <PipelineKpis columns={columns} totalLeads={totalLeads} />
+        <PipelineKpis columns={columns} totalLeads={totalLeads} loading={false} />
 
         {/* Mobile lead cards (active stage, always 2-col grid) */}
         {visibleColumns.map((column) => (
@@ -721,6 +723,7 @@ const Acquisitions = () => {
             viewMode="grid"
             getTitle={getTranslatedTitle}
             onSelect={setSelectedLead}
+            loading={false}
           />
         ))}
       </div>

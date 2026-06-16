@@ -6,7 +6,11 @@ import {
   TrendingUp, CheckCircle2, MapPin, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import { api } from '../lib/api';
+import { Modal } from '../components/ui/Modal';
+import { DocumentPreviewButton } from '../components/ui/DocumentViewerModal';
+import { SalesReceipt } from '../components/documents/SalesReceipt';
 import { Badge } from '../components/ui/Badge';
+import { Skeleton, SkeletonText } from '../components/ui/Skeleton';
 
 /* ─── Section Card wrapper ─────────────────────────────────────── */
 const Section = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
@@ -115,10 +119,31 @@ export default function SoldArchiveDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary-main/20  rounded-full animate-spin" />
-          <p className="text-primary-main font-bold text-[12px] tracking-widest uppercase">Loading Archive Record…</p>
+      <div className="space-y-6 pb-24 animate-fade-in">
+        <Skeleton className="w-40 h-5" />
+        <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-6">
+           <Skeleton className="w-16 h-6 mb-2" />
+           <Skeleton className="w-3/4 h-8 mb-2" />
+           <Skeleton className="w-1/2 h-4" />
+        </div>
+        <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-6">
+           <Skeleton className="w-32 h-6 mb-4" />
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             <Skeleton className="aspect-video rounded-xl" />
+             <Skeleton className="aspect-video rounded-xl" />
+             <Skeleton className="aspect-video rounded-xl" />
+             <Skeleton className="aspect-video rounded-xl" />
+           </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+           <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-6">
+              <Skeleton className="w-48 h-6 mb-6" />
+              <SkeletonText lines={5} />
+           </div>
+           <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-6">
+              <Skeleton className="w-48 h-6 mb-6" />
+              <SkeletonText lines={5} />
+           </div>
         </div>
       </div>
     );
@@ -262,7 +287,7 @@ export default function SoldArchiveDetail() {
             <>
               <Row label="Battery SOH" value={vehicle.battery_soh_percent ? `${vehicle.battery_soh_percent}%` : null} />
               <Row label="Battery Capacity" value={vehicle.battery_capacity_kwh ? `${vehicle.battery_capacity_kwh} kWh` : null} />
-              <Row label="Motor Power" value={vehicle.motor_power_kw ? `${vehicle.motor_power_kw} kW` : null} />
+              <Row label="Motor Power" value={vehicle.motor_power_kw ? `${Math.round(vehicle.motor_power_kw * 1.341)} HP` : null} />
               <Row label="Range" value={vehicle.range_km ? `${vehicle.range_km} km` : null} />
             </>
           ) : null}
@@ -287,6 +312,32 @@ export default function SoldArchiveDetail() {
             </div>
           ) : (
             <p className="text-[12px] text-text-muted/40 italic font-medium">No features listed.</p>
+          )}
+        </Section>
+        
+        {/* ── Internal Documents ── */}
+        <Section title="Internal Documents" icon={<FileText size={15} />}>
+          {(vehicle.internal_documents || vehicle.internalDocuments || vehicle.documents) && (vehicle.internal_documents?.length > 0 || vehicle.internalDocuments?.length > 0 || vehicle.documents?.length > 0) ? (
+            <div className="flex flex-col gap-3">
+              {(vehicle.internal_documents || vehicle.internalDocuments || vehicle.documents).map((doc: string, i: number) => {
+                const filename = doc.split('/').pop()?.split('?')[0] || `Document ${i + 1}`;
+                return (
+                  <DocumentPreviewButton
+                    key={i}
+                    url={doc}
+                    title={filename}
+                    className="flex items-center gap-3 p-3 bg-surface-hover border border-border-subtle/30 rounded-xl hover:bg-surface-hover/80 transition-colors w-full text-left"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary-main flex items-center justify-center shrink-0">
+                      <FileText size={14} />
+                    </div>
+                    <span className="text-[13px] font-bold text-text-main truncate">{filename}</span>
+                  </DocumentPreviewButton>
+                );
+              })}
+            </div>
+          ) : (
+             <p className="text-[12px] text-text-muted/40 italic font-medium">No internal documents attached.</p>
           )}
         </Section>
       </div>

@@ -93,9 +93,10 @@ function statusLabel(status: string): string {
 interface PipelineKpisProps {
   columns: { id: string; title: string; items: any[] }[];
   totalLeads: number;
+  loading: boolean;
 }
 
-const PipelineKpis: React.FC<PipelineKpisProps> = ({ columns, totalLeads }) => {
+const PipelineKpis: React.FC<PipelineKpisProps> = ({ columns, totalLeads, loading }) => {
   const acquired = columns.find((c) => c.id === 'acquired')?.items.length ?? 0;
   const pending = columns.find((c) => c.id === 'appraisal')?.items.length ?? 0;
   const inbound = columns.find((c) => c.id === 'new')?.items.length ?? 0;
@@ -104,62 +105,75 @@ const PipelineKpis: React.FC<PipelineKpisProps> = ({ columns, totalLeads }) => {
   return (
     <div className="flex flex-col gap-3">
       {/* Primary KPI card */}
-      <div className="bg-surface-card rounded-[20px] shadow-sm border border-border-subtle/30 overflow-hidden relative">
-        <div className="p-5 pb-14">
-          <div className="flex justify-between items-start">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
-              Active Pipeline
+      {loading ? (
+        <SkeletonKpi className="h-32" />
+      ) : (
+        <div className="bg-surface-card rounded-[20px] shadow-sm border border-border-subtle/30 overflow-hidden relative">
+          <div className="p-5 pb-14">
+            <div className="flex justify-between items-start">
+              <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
+                Active Pipeline
+              </p>
+              <TrendingUp size={16} className="text-text-muted" />
+            </div>
+            <p className="mt-2 text-[28px] font-black tracking-tight text-text-main">
+              {totalLeads}
+              <span className="text-[14px] font-bold text-text-muted ml-2">leads</span>
             </p>
-            <TrendingUp size={16} className="text-text-muted" />
           </div>
-          <p className="mt-2 text-[28px] font-black tracking-tight text-text-main">
-            {totalLeads}
-            <span className="text-[14px] font-bold text-text-muted ml-2">leads</span>
-          </p>
+          {/* Wave chart approximation */}
+          <div className="absolute bottom-0 left-0 w-full h-14 overflow-hidden">
+            <svg
+              viewBox="0 0 400 48"
+              preserveAspectRatio="none"
+              className="w-full h-full text-primary-main"
+            >
+              <path
+                d="M0,36 C60,20 120,44 180,28 C240,12 300,38 360,22 C380,16 395,28 400,24 L400,48 L0,48 Z"
+                fill="currentColor"
+                fillOpacity="0.1"
+              />
+              <path
+                d="M0,36 C60,20 120,44 180,28 C240,12 300,38 360,22 C380,16 395,28 400,24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              />
+            </svg>
+          </div>
         </div>
-        {/* Wave chart approximation */}
-        <div className="absolute bottom-0 left-0 w-full h-14 overflow-hidden">
-          <svg
-            viewBox="0 0 400 48"
-            preserveAspectRatio="none"
-            className="w-full h-full text-primary-main"
-          >
-            <path
-              d="M0,36 C60,20 120,44 180,28 C240,12 300,38 360,22 C380,16 395,28 400,24 L400,48 L0,48 Z"
-              fill="currentColor"
-              fillOpacity="0.1"
-            />
-            <path
-              d="M0,36 C60,20 120,44 180,28 C240,12 300,38 360,22 C380,16 395,28 400,24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            />
-          </svg>
-        </div>
-      </div>
+      )}
 
       {/* 2×2 KPI grid */}
       <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: 'Inbound', value: String(inbound), icon: <Layers size={14} />, color: 'text-primary-main' },
-          { label: 'In Evaluation', value: String(pending), icon: <AlertCircle size={14} />, color: 'text-amber-400' },
-          { label: 'Acquired', value: String(acquired), icon: <CheckCircle size={14} />, color: 'text-emerald-400' },
-          { label: 'In Settlement', value: String(settlement), icon: <Zap size={14} />, color: 'text-text-muted' },
-        ].map(({ label, value, icon, color }) => (
-          <div
-            key={label}
-            className="bg-surface-card rounded-[16px] p-4 shadow-sm border border-border-subtle/30 flex flex-col"
-          >
-            <div className="flex justify-between items-start">
-              <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
-                {label}
-              </p>
-              <span className={color}>{icon}</span>
+        {loading ? (
+          <>
+            <SkeletonKpi className="h-28" />
+            <SkeletonKpi className="h-28" />
+            <SkeletonKpi className="h-28" />
+            <SkeletonKpi className="h-28" />
+          </>
+        ) : (
+          [
+            { label: 'Inbound', value: String(inbound), icon: <Layers size={14} />, color: 'text-primary-main' },
+            { label: 'In Evaluation', value: String(pending), icon: <AlertCircle size={14} />, color: 'text-amber-400' },
+            { label: 'Acquired', value: String(acquired), icon: <CheckCircle size={14} />, color: 'text-emerald-400' },
+            { label: 'In Settlement', value: String(settlement), icon: <Zap size={14} />, color: 'text-text-muted' },
+          ].map(({ label, value, icon, color }) => (
+            <div
+              key={label}
+              className="bg-surface-card rounded-[16px] p-4 shadow-sm border border-border-subtle/30 flex flex-col"
+            >
+              <div className="flex justify-between items-start">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
+                  {label}
+                </p>
+                <span className={color}>{icon}</span>
+              </div>
+              <p className="mt-2 text-[18px] font-black tracking-tight text-text-main">{value}</p>
             </div>
-            <p className="mt-2 text-[18px] font-black tracking-tight text-text-main">{value}</p>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -340,11 +354,12 @@ const LeadCard: React.FC<LeadCardProps> = ({ item, viewMode, onClick }) => (
 interface LeadGridProps {
   column: { id: string; title: string; items: any[] };
   viewMode: 'grid' | 'list';
+  loading: boolean;
   getTitle: (id: string) => string;
   onSelect: (item: any) => void;
 }
 
-const LeadGrid: React.FC<LeadGridProps> = ({ column, viewMode, getTitle, onSelect }) => (
+const LeadGrid: React.FC<LeadGridProps> = ({ column, viewMode, loading, getTitle, onSelect }) => (
   <div className="flex flex-col gap-4">
     {/* Column header */}
     <div className="flex items-center justify-between px-1">
@@ -366,16 +381,14 @@ const LeadGrid: React.FC<LeadGridProps> = ({ column, viewMode, getTitle, onSelec
         viewMode === 'list' ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-2 sm:gap-3',
       )}
     >
-      {column.items.map((item: any) => (
-        <LeadCard
-          key={item.id}
-          item={item}
-          viewMode={viewMode}
-          onClick={() => onSelect(item)}
-        />
-      ))}
-
-      {column.items.length === 0 && (
+      {loading ? (
+        <>
+          <div className={cn("rounded-2xl bg-border-subtle/40 animate-pulse", viewMode === 'list' ? "h-20" : "h-40")} />
+          <div className={cn("rounded-2xl bg-border-subtle/40 animate-pulse", viewMode === 'list' ? "h-20" : "h-40")} />
+          <div className={cn("rounded-2xl bg-border-subtle/40 animate-pulse", viewMode === 'list' ? "h-20" : "h-40")} />
+          <div className={cn("rounded-2xl bg-border-subtle/40 animate-pulse", viewMode === 'list' ? "h-20" : "h-40")} />
+        </>
+      ) : column.items.length === 0 ? (
         <div className="col-span-full py-16 text-center flex flex-col items-center gap-3 bg-surface-card rounded-2xl border border-dashed border-border-subtle">
           <Car size={28} className="text-text-muted opacity-20" />
           <div>
@@ -385,6 +398,15 @@ const LeadGrid: React.FC<LeadGridProps> = ({ column, viewMode, getTitle, onSelec
             </p>
           </div>
         </div>
+      ) : (
+        column.items.map((item: any) => (
+          <LeadCard
+            key={item.id}
+            item={item}
+            viewMode={viewMode}
+            onClick={() => onSelect(item)}
+          />
+        ))
       )}
     </div>
   </div>

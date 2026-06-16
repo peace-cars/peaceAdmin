@@ -54,6 +54,11 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   return (
     <div className="flex h-screen bg-bg-base text-text-main font-sans overflow-hidden">
+      {/* Background Decoration */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#0033FF]/20 via-[#0033FF]/5 to-transparent dark:from-[#0033FF]/40 dark:via-[#020A2F] dark:to-[#050511]" />
+      </div>
+
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div
@@ -89,7 +94,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       </motion.div>
 
       {/* Main Content */}
-      <main className="flex-grow flex flex-col h-full overflow-hidden relative">
+      <main className="flex-grow flex flex-col h-full overflow-hidden relative z-10">
         <TopNav
           user={user}
           role={role}

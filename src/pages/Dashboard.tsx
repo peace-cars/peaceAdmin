@@ -422,6 +422,7 @@ export default function Dashboard() {
               budgets={budgets}
               branchStaff={branchStaff}
               selectedBranchId={selectedBranch}
+              profitability={profitability}
               onUpdateExchangeRate={updateExchangeRate}
               onApproveListing={approveListing}
               onApprove={handleApproveLead}

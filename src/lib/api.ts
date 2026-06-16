@@ -32,7 +32,9 @@ async function attemptTokenRefresh(): Promise<string | null> {
 
     if (!res.ok) {
       // Refresh token is also expired — force logout
-      forceLogout();
+      if (res.status === 401 || res.status === 403 || res.status === 400) {
+        forceLogout();
+      }
       onTokenRefreshed(null);
       return null;
     }
@@ -57,8 +59,8 @@ async function attemptTokenRefresh(): Promise<string | null> {
     onTokenRefreshed(newAccessToken || null);
     return newAccessToken || null;
   } catch (err) {
-    console.error('[Admin API] Token refresh failed:', err);
-    forceLogout();
+    console.error('[Admin API] Token refresh failed (network/server error):', err);
+    // DO NOT force logout on network errors
     onTokenRefreshed(null);
     return null;
   } finally {

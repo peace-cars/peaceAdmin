@@ -26,6 +26,7 @@ import { KpiTile } from '../components/ui/KpiTile';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Badge } from '../components/ui/Badge';
 import { ProgressiveImage } from '../components/ui/ProgressiveImage';
+import { SkeletonCard, SkeletonRow, SkeletonKpi } from '../components/ui/Skeleton';
 import { cn } from '../lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ interface ArchiveKpisProps {
   totalProfit: number;
   totalUnits: number;
   avgMargin: number;
+  loading: boolean;
 }
 
 const ArchiveKpis: React.FC<ArchiveKpisProps> = ({
@@ -43,65 +45,79 @@ const ArchiveKpis: React.FC<ArchiveKpisProps> = ({
   totalProfit,
   totalUnits,
   avgMargin,
+  loading,
 }) => (
   <div className="flex flex-col gap-3">
     {/* Primary card — Net Profit with wave */}
-    <div className="bg-surface-card rounded-[20px] shadow-sm border border-border-subtle/30 overflow-hidden relative">
-      <div className="p-5 pb-14">
-        <div className="flex justify-between items-start">
-          <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
-            Total Net Profit
+    {loading ? (
+      <SkeletonKpi className="h-32" />
+    ) : (
+      <div className="bg-surface-card rounded-[20px] shadow-sm border border-border-subtle/30 overflow-hidden relative">
+        <div className="p-5 pb-14">
+          <div className="flex justify-between items-start">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
+              Total Net Profit
+            </p>
+            <DollarSign size={16} className="text-success-main" />
+          </div>
+          <p className="mt-2 text-[26px] font-black tracking-tight text-success-main">
+            {(totalProfit / 1000000).toFixed(2)}M
+            <span className="text-[14px] font-bold text-success-main/60 ml-2">ETB</span>
           </p>
-          <DollarSign size={16} className="text-success-main" />
         </div>
-        <p className="mt-2 text-[26px] font-black tracking-tight text-success-main">
-          {(totalProfit / 1000000).toFixed(2)}M
-          <span className="text-[14px] font-bold text-success-main/60 ml-2">ETB</span>
-        </p>
+        {/* Wave chart approximation */}
+        <div className="absolute bottom-0 left-0 w-full h-14 overflow-hidden">
+          <svg
+            viewBox="0 0 400 48"
+            preserveAspectRatio="none"
+            className="w-full h-full text-success-main"
+          >
+            <path
+              d="M0,38 C70,20 140,42 200,26 C260,10 320,36 370,22 C385,16 395,24 400,20 L400,48 L0,48 Z"
+              fill="currentColor"
+              fillOpacity="0.1"
+            />
+            <path
+              d="M0,38 C70,20 140,42 200,26 C260,10 320,36 370,22 C385,16 395,24 400,20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            />
+          </svg>
+        </div>
       </div>
-      {/* Wave chart approximation */}
-      <div className="absolute bottom-0 left-0 w-full h-14 overflow-hidden">
-        <svg
-          viewBox="0 0 400 48"
-          preserveAspectRatio="none"
-          className="w-full h-full text-success-main"
-        >
-          <path
-            d="M0,38 C70,20 140,42 200,26 C260,10 320,36 370,22 C385,16 395,24 400,20 L400,48 L0,48 Z"
-            fill="currentColor"
-            fillOpacity="0.1"
-          />
-          <path
-            d="M0,38 C70,20 140,42 200,26 C260,10 320,36 370,22 C385,16 395,24 400,20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          />
-        </svg>
-      </div>
-    </div>
+    )}
 
     {/* 2×2 KPI grid */}
     <div className="grid grid-cols-2 gap-3">
-      {[
-        { label: 'Units Sold', value: String(totalUnits), icon: <Package size={14} />, color: 'text-primary-main' },
-        { label: 'Gross Revenue', value: `${(totalRevenue / 1000000).toFixed(1)}M ETB`, icon: <DollarSign size={14} />, color: 'text-emerald-400' },
-        { label: 'Average Margin', value: `${avgMargin.toFixed(1)}%`, icon: <DollarSign size={14} />, color: 'text-amber-400' },
-        { label: 'Active Branches', value: 'All', icon: <Building2 size={14} />, color: 'text-text-muted' },
-      ].map(({ label, value, icon, color }) => (
-        <div
-          key={label}
-          className="bg-surface-card rounded-[16px] p-4 shadow-sm border border-border-subtle/30 flex flex-col"
-        >
-          <div className="flex justify-between items-start">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
-              {label}
-            </p>
-            <span className={color}>{icon}</span>
+      {loading ? (
+        <>
+          <SkeletonKpi className="h-28" />
+          <SkeletonKpi className="h-28" />
+          <SkeletonKpi className="h-28" />
+          <SkeletonKpi className="h-28" />
+        </>
+      ) : (
+        [
+          { label: 'Units Sold', value: String(totalUnits), icon: <Package size={14} />, color: 'text-primary-main' },
+          { label: 'Gross Revenue', value: `${(totalRevenue / 1000000).toFixed(1)}M ETB`, icon: <DollarSign size={14} />, color: 'text-emerald-400' },
+          { label: 'Average Margin', value: `${avgMargin.toFixed(1)}%`, icon: <DollarSign size={14} />, color: 'text-amber-400' },
+          { label: 'Active Branches', value: 'All', icon: <Building2 size={14} />, color: 'text-text-muted' },
+        ].map(({ label, value, icon, color }) => (
+          <div
+            key={label}
+            className="bg-surface-card rounded-[16px] p-4 shadow-sm border border-border-subtle/30 flex flex-col"
+          >
+            <div className="flex justify-between items-start">
+              <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
+                {label}
+              </p>
+              <span className={color}>{icon}</span>
+            </div>
+            <p className="mt-2 text-[15px] font-black tracking-tight text-text-main">{value}</p>
           </div>
-          <p className="mt-2 text-[15px] font-black tracking-tight text-text-main">{value}</p>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   </div>
 );
@@ -160,19 +176,29 @@ const ArchiveCard: React.FC<ArchiveCardProps> = ({ car, onClick }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 interface ArchiveGridProps {
   cars: any[];
+  loading: boolean;
   onClick: (id: string) => void;
 }
 
-const ArchiveGrid: React.FC<ArchiveGridProps> = ({ cars, onClick }) => (
+const ArchiveGrid: React.FC<ArchiveGridProps> = ({ cars, loading, onClick }) => (
   <div className="flex flex-col gap-3">
     <div className="flex items-center justify-between px-1">
       <p className="text-[15px] font-black text-text-main">Sold Assets</p>
       <span className="text-[12px] font-bold text-primary-main">See all</span>
     </div>
     <div className="grid grid-cols-2 gap-3">
-      {cars.map((car) => (
-        <ArchiveCard key={car.id} car={car} onClick={() => onClick(car.id)} />
-      ))}
+      {loading ? (
+        <>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </>
+      ) : (
+        cars.map((car) => (
+          <ArchiveCard key={car.id} car={car} onClick={() => onClick(car.id)} />
+        ))
+      )}
     </div>
   </div>
 );
@@ -205,65 +231,82 @@ const ArchiveDesktopTable: React.FC<ArchiveDesktopTableProps> = ({ archive, load
           </tr>
         </thead>
         <tbody className="space-y-4">
-          {archive.map((car) => (
-            <tr
-              key={car.id}
-              onClick={() => onRowClick(car.id)}
-              className="group transition-all cursor-pointer"
-            >
-              <td className="py-4 px-4 bg-bg-secondary/30 border-y border-l border-border-subtle/30 rounded-l-2xl group-hover:bg-bg-secondary/50 transition-all">
-                <div className="flex items-center gap-5">
-                  <div className="w-16 h-12 rounded-xl overflow-hidden border border-border-subtle/30 bg-bg-secondary shrink-0 shadow-sm">
-                    <img src={car.image} alt={car.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-text-main font-bold text-sm tracking-tight leading-tight group-hover:text-primary-main transition-colors">
-                      {car.name}
-                    </p>
-                    <Badge variant="default" className="font-mono text-[12px] text-text-muted/60 border border-border-subtle/30 bg-bg-secondary">
-                      {car.plate}
-                    </Badge>
-                  </div>
-                </div>
-              </td>
-              <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 transition-all">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-[13px] font-medium text-text-muted/60">
-                    <Calendar size={12} /> {car.soldDate}
-                  </div>
-                  <div className="flex items-center gap-2 text-[13px] font-medium text-text-muted/60">
-                    <Building2 size={12} /> {car.branchName}
-                  </div>
-                </div>
-              </td>
-              <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 transition-all">
-                <div className="space-y-1">
-                  <p className="text-[13px] text-text-muted/60 font-medium">
-                    Sale: {(car.price / 1000000).toFixed(2)}M ETB
-                  </p>
-                  <p className="text-[13px] text-error-main font-medium">
-                    - Cost: {(car.unitCost / 1000000).toFixed(2)}M ETB
-                  </p>
-                </div>
-              </td>
-              <td className="py-4 px-4 bg-bg-secondary/30 border-y border-r border-border-subtle/30 rounded-r-2xl text-right group-hover:bg-bg-secondary/50 transition-all">
-                <div className="space-y-1 text-right">
-                  <p className="text-xl font-black text-success-main tracking-tight">
-                    +{(car.profit / 1000000).toFixed(2)}M
-                  </p>
-                  <Badge variant="success" className="bg-success-main/10 text-success-main border-none font-bold">
-                    {car.price > 0 ? ((car.profit / car.price) * 100).toFixed(1) : 0}% Margin
-                  </Badge>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {archive.length === 0 && !loading && (
+          {loading ? (
+            <>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i}>
+                  <td colSpan={4} className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 rounded-2xl mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-12 rounded-xl bg-border-subtle/40 animate-pulse shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 w-1/4 bg-border-subtle/40 animate-pulse rounded" />
+                        <div className="h-3 w-1/3 bg-border-subtle/40 animate-pulse rounded" />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </>
+          ) : archive.length === 0 ? (
             <tr>
               <td colSpan={4} className="py-12 text-center text-text-muted">
                 No sold vehicles found in the archive.
               </td>
             </tr>
+          ) : (
+            archive.map((car) => (
+              <tr
+                key={car.id}
+                onClick={() => onRowClick(car.id)}
+                className="group transition-all cursor-pointer"
+              >
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-l border-border-subtle/30 rounded-l-2xl group-hover:bg-bg-secondary/50 transition-all">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-12 rounded-xl overflow-hidden border border-border-subtle/30 bg-bg-secondary shrink-0 shadow-sm">
+                      <img src={car.image} alt={car.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-text-main font-bold text-sm tracking-tight leading-tight group-hover:text-primary-main transition-colors">
+                        {car.name}
+                      </p>
+                      <Badge variant="default" className="font-mono text-[12px] text-text-muted/60 border border-border-subtle/30 bg-bg-secondary">
+                        {car.plate}
+                      </Badge>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 transition-all">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[13px] font-medium text-text-muted/60">
+                      <Calendar size={12} /> {car.soldDate}
+                    </div>
+                    <div className="flex items-center gap-2 text-[13px] font-medium text-text-muted/60">
+                      <Building2 size={12} /> {car.branchName}
+                    </div>
+                  </div>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 group-hover:bg-bg-secondary/50 transition-all">
+                  <div className="space-y-1">
+                    <p className="text-[13px] text-text-muted/60 font-medium">
+                      Sale: {(car.price / 1000000).toFixed(2)}M ETB
+                    </p>
+                    <p className="text-[13px] text-error-main font-medium">
+                      - Cost: {(car.unitCost / 1000000).toFixed(2)}M ETB
+                    </p>
+                  </div>
+                </td>
+                <td className="py-4 px-4 bg-bg-secondary/30 border-y border-r border-border-subtle/30 rounded-r-2xl text-right group-hover:bg-bg-secondary/50 transition-all">
+                  <div className="space-y-1 text-right">
+                    <p className="text-xl font-black text-success-main tracking-tight">
+                      +{(car.profit / 1000000).toFixed(2)}M
+                    </p>
+                    <Badge variant="success" className="bg-success-main/10 text-success-main border-none font-bold">
+                      {car.price > 0 ? ((car.profit / car.price) * 100).toFixed(1) : 0}% Margin
+                    </Badge>
+                  </div>
+                </td>
+              </tr>
+            ))
           )}
         </tbody>
       </table>
@@ -347,18 +390,29 @@ const SoldArchive = () => {
 
       {/* ─── DESKTOP KPI GRID ─── */}
       <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-6">
-        <Tooltip content="Total number of vehicles successfully sold">
-          <KpiTile label="Units Sold" value={archive.length} icon={<Package size={14} />} className="p-6 h-32" />
-        </Tooltip>
-        <Tooltip content="Total gross revenue from vehicle sales">
-          <KpiTile label="Gross Revenue" value={`${(totalRevenue / 1000000).toFixed(1)}M`} icon={<DollarSign size={14} />} className="p-6 h-32" />
-        </Tooltip>
-        <Tooltip content="Total net profit after unit costs">
-          <KpiTile label="Net Profit" value={`${(totalProfit / 1000000).toFixed(2)}M`} icon={<DollarSign size={14} />} className="p-6 h-32 text-success-main" />
-        </Tooltip>
-        <Tooltip content="Average profit margin across all sales">
-          <KpiTile label="Average Margin" value={`${avgMargin.toFixed(1)}%`} icon={<DollarSign size={14} />} className="p-6 h-32" />
-        </Tooltip>
+        {loading ? (
+          <>
+            <SkeletonKpi className="h-32" />
+            <SkeletonKpi className="h-32" />
+            <SkeletonKpi className="h-32" />
+            <SkeletonKpi className="h-32" />
+          </>
+        ) : (
+          <>
+            <Tooltip content="Total number of vehicles successfully sold">
+              <KpiTile label="Units Sold" value={archive.length} icon={<Package size={14} />} className="p-6 h-32" />
+            </Tooltip>
+            <Tooltip content="Total gross revenue from vehicle sales">
+              <KpiTile label="Gross Revenue" value={`${(totalRevenue / 1000000).toFixed(1)}M`} icon={<DollarSign size={14} />} className="p-6 h-32" />
+            </Tooltip>
+            <Tooltip content="Total net profit after unit costs">
+              <KpiTile label="Net Profit" value={`${(totalProfit / 1000000).toFixed(2)}M`} icon={<DollarSign size={14} />} className="p-6 h-32 text-success-main" />
+            </Tooltip>
+            <Tooltip content="Average profit margin across all sales">
+              <KpiTile label="Average Margin" value={`${avgMargin.toFixed(1)}%`} icon={<DollarSign size={14} />} className="p-6 h-32" />
+            </Tooltip>
+          </>
+        )}
       </div>
 
       {/* ══════════════════════════════════════
@@ -395,10 +449,11 @@ const SoldArchive = () => {
           totalProfit={totalProfit}
           totalUnits={archive.length}
           avgMargin={avgMargin}
+          loading={loading}
         />
 
         {/* 2-column vehicle grid */}
-        <ArchiveGrid cars={archive} onClick={(id) => navigate(`/archive/${id}`)} />
+        <ArchiveGrid cars={archive} loading={loading} onClick={(id) => navigate(`/archive/${id}`)} />
       </div>
 
       {/* ─── DESKTOP TABLE ─── */}

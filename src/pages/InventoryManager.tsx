@@ -42,8 +42,10 @@ import { Modal } from '../components/ui/Modal';
 import { Tooltip } from '../components/ui/Tooltip';
 import { TextField, SelectField } from '../components/ui/FormControls';
 import { cn } from '../lib/utils';
+import { SkeletonCard, SkeletonKpi } from '../components/ui/Skeleton';
 import ImageUpload from '../components/ImageUpload';
 import { DocumentViewer } from '../components/documents/DocumentViewer';
+import { DocumentPreviewButton } from '../components/ui/DocumentViewerModal';
 import { SalesReceipt } from '../components/documents/SalesReceipt';
 import { ProgressiveImage } from '../components/ui/ProgressiveImage';
 
@@ -72,6 +74,7 @@ interface MobileKpisProps {
   inventoryCount: number;
   branchCount: number;
   archiveCount: number;
+  loading: boolean;
 }
 
 const MobileKpis: React.FC<MobileKpisProps> = ({
@@ -79,68 +82,82 @@ const MobileKpis: React.FC<MobileKpisProps> = ({
   inventoryCount,
   branchCount,
   archiveCount,
+  loading,
 }) => (
   <div className="flex flex-col gap-3">
     {/* Total Portfolio Value card with wave chart */}
-    <div className="bg-surface-card rounded-[20px] shadow-sm border border-border-subtle/30 overflow-hidden relative">
-      <div className="p-5 pb-14">
-        <div className="flex justify-between items-start">
-          <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
-            Total Portfolio Value
+    {loading ? (
+      <SkeletonKpi className="h-32" />
+    ) : (
+      <div className="bg-surface-card rounded-[20px] shadow-sm border border-border-subtle/30 overflow-hidden relative">
+        <div className="p-5 pb-14">
+          <div className="flex justify-between items-start">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
+              Total Portfolio Value
+            </p>
+            <Car size={16} className="text-text-muted" />
+          </div>
+          <p className="mt-2 text-[26px] font-black tracking-tight text-text-main">
+            {(totalValue / 1000000).toFixed(1)}M ETB
           </p>
-          <Car size={16} className="text-text-muted" />
         </div>
-        <p className="mt-2 text-[26px] font-black tracking-tight text-text-main">
-          {(totalValue / 1000000).toFixed(1)}M ETB
-        </p>
+        {/* Wavy SVG chart approximation */}
+        <div className="absolute bottom-0 left-0 w-full h-14 overflow-hidden">
+          <svg
+            viewBox="0 0 400 48"
+            preserveAspectRatio="none"
+            className="w-full h-full text-[#2196f3]"
+          >
+            <path
+              d="M0,36 C50,24 100,44 150,30 C200,14 250,36 300,24 C350,12 380,30 400,24 L400,48 L0,48 Z"
+              fill="currentColor"
+              fillOpacity="0.1"
+            />
+            <path
+              d="M0,36 C50,24 100,44 150,30 C200,14 250,36 300,24 C350,12 380,30 400,24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            />
+          </svg>
+        </div>
       </div>
-      {/* Wavy SVG chart approximation */}
-      <div className="absolute bottom-0 left-0 w-full h-14 overflow-hidden">
-        <svg
-          viewBox="0 0 400 48"
-          preserveAspectRatio="none"
-          className="w-full h-full text-[#2196f3]"
-        >
-          <path
-            d="M0,36 C50,24 100,44 150,30 C200,14 250,36 300,24 C350,12 380,30 400,24 L400,48 L0,48 Z"
-            fill="currentColor"
-            fillOpacity="0.1"
-          />
-          <path
-            d="M0,36 C50,24 100,44 150,30 C200,14 250,36 300,24 C350,12 380,30 400,24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          />
-        </svg>
-      </div>
-    </div>
+    )}
 
     {/* 2×2 secondary KPI grid */}
     <div className="grid grid-cols-2 gap-3">
-      {[
-        { label: 'Inventory', value: `${inventoryCount} assets`, icon: <Package size={14} /> },
-        { label: 'Active Branches', value: String(branchCount), icon: <Network size={14} /> },
-        { label: 'Archives', value: String(archiveCount), icon: <FileText size={14} /> },
-        {
-          label: 'Portfolio Details',
-          value: `${(totalValue / 1000000).toFixed(1)}M ETB`,
-          icon: <Zap size={14} />,
-        },
-      ].map(({ label, value, icon }) => (
-        <div
-          key={label}
-          className="bg-surface-card rounded-[16px] p-4 shadow-sm border border-border-subtle/30 flex flex-col"
-        >
-          <div className="flex justify-between items-start">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
-              {label}
-            </p>
-            <span className="text-text-muted">{icon}</span>
+      {loading ? (
+        <>
+          <SkeletonKpi className="h-28" />
+          <SkeletonKpi className="h-28" />
+          <SkeletonKpi className="h-28" />
+          <SkeletonKpi className="h-28" />
+        </>
+      ) : (
+        [
+          { label: 'Inventory', value: `${inventoryCount} assets`, icon: <Package size={14} /> },
+          { label: 'Active Branches', value: String(branchCount), icon: <Network size={14} /> },
+          { label: 'Archives', value: String(archiveCount), icon: <FileText size={14} /> },
+          {
+            label: 'Portfolio Details',
+            value: `${(totalValue / 1000000).toFixed(1)}M ETB`,
+            icon: <Zap size={14} />,
+          },
+        ].map(({ label, value, icon }) => (
+          <div
+            key={label}
+            className="bg-surface-card rounded-[16px] p-4 shadow-sm border border-border-subtle/30 flex flex-col"
+          >
+            <div className="flex justify-between items-start">
+              <p className="text-[10px] uppercase font-bold tracking-widest text-text-muted">
+                {label}
+              </p>
+              <span className="text-text-muted">{icon}</span>
+            </div>
+            <p className="mt-2 text-[15px] font-black tracking-tight text-text-main">{value}</p>
           </div>
-          <p className="mt-2 text-[15px] font-black tracking-tight text-text-main">{value}</p>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   </div>
 );
@@ -223,6 +240,7 @@ interface VehicleGridProps {
   cars: any[];
   bottomRef: React.Ref<HTMLDivElement>;
   hasMore: boolean;
+  loading: boolean;
   onOpen: (car: any) => void;
   onPrint: (car: any) => void;
 }
@@ -231,6 +249,7 @@ const VehicleGrid: React.FC<VehicleGridProps> = ({
   cars,
   bottomRef,
   hasMore,
+  loading,
   onOpen,
   onPrint,
 }) => (
@@ -243,14 +262,23 @@ const VehicleGrid: React.FC<VehicleGridProps> = ({
 
     {/* 2-column grid */}
     <div className="grid grid-cols-2 gap-3">
-      {cars.map((car) => (
-        <VehicleCard
-          key={car.id}
-          car={car}
-          onOpen={() => onOpen(car)}
-          onPrint={() => onPrint(car)}
-        />
-      ))}
+      {loading ? (
+        <>
+          <div className="h-48 rounded-2xl bg-border-subtle/40 animate-pulse" />
+          <div className="h-48 rounded-2xl bg-border-subtle/40 animate-pulse" />
+          <div className="h-48 rounded-2xl bg-border-subtle/40 animate-pulse" />
+          <div className="h-48 rounded-2xl bg-border-subtle/40 animate-pulse" />
+        </>
+      ) : (
+        cars.map((car) => (
+          <VehicleCard
+            key={car.id}
+            car={car}
+            onOpen={() => onOpen(car)}
+            onPrint={() => onPrint(car)}
+          />
+        ))
+      )}
     </div>
 
     {hasMore && <div ref={bottomRef} className="h-4 w-full" />}
@@ -262,13 +290,14 @@ const VehicleGrid: React.FC<VehicleGridProps> = ({
 // ─────────────────────────────────────────────────────────────────────────────
 interface DesktopTableProps {
   cars: any[];
+  loading: boolean;
   onView: (car: any) => void;
   onEdit: (car: any) => void;
   onDelete: (id: string) => void;
   onPrint: (car: any) => void;
 }
 
-const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onView, onEdit, onDelete, onPrint }) => (
+const DesktopTable: React.FC<DesktopTableProps> = ({ cars, loading, onView, onEdit, onDelete, onPrint }) => (
   <div className="bg-surface-card rounded-2xl shadow-sm border border-border-subtle/30 p-2 hidden md:block">
     <div className="flex flex-col gap-1.5 p-6 border-b border-border-subtle/30">
       <h2 className="text-[13px] font-bold text-text-main">Registry Ledger</h2>
@@ -288,7 +317,30 @@ const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onView, onEdit, onDel
           </tr>
         </thead>
         <tbody>
-          {cars.map((car) => (
+          {loading ? (
+            <>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td colSpan={5} className="py-4 px-4 bg-bg-secondary/30 border-y border-border-subtle/30 rounded-2xl mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-12 rounded-xl bg-border-subtle/40 animate-pulse shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 w-1/4 bg-border-subtle/40 animate-pulse rounded" />
+                        <div className="h-3 w-1/3 bg-border-subtle/40 animate-pulse rounded" />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </>
+          ) : cars.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="py-12 text-center text-text-muted">
+                No vehicles found in the registry.
+              </td>
+            </tr>
+          ) : (
+            cars.map((car) => (
             <tr key={car.id} onClick={() => onView(car)} className="group transition-all cursor-pointer">
               <td className="py-4 px-4 bg-bg-secondary/30 border-y border-l border-border-subtle/30 rounded-l-2xl group-hover:bg-bg-secondary/50 group-hover:border-primary-main/30 transition-all">
                 <div className="flex items-center gap-5">
@@ -437,7 +489,8 @@ const DesktopTable: React.FC<DesktopTableProps> = ({ cars, onView, onEdit, onDel
                 </div>
               </td>
             </tr>
-          ))}
+          ))
+        )}
         </tbody>
       </table>
     </div>
@@ -847,15 +900,13 @@ const AssetFormModal: React.FC<AssetFormModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(typeof doc === 'string' ? doc : doc.url, '_blank')
-                        }
+                      <DocumentPreviewButton
+                        url={typeof doc === 'string' ? doc : doc.url}
+                        title={typeof doc === 'string' ? 'Document' : doc.name}
                         className="w-10 h-10 flex items-center justify-center bg-bg-secondary border border-border-subtle/30 rounded-xl text-text-muted/60 hover:text-primary-main shadow-sm transition-all active:scale-90"
                       >
                         <ExternalLink size={16} />
-                      </button>
+                      </DocumentPreviewButton>
                       <button
                         type="button"
                         onClick={() =>
@@ -1002,7 +1053,7 @@ const AssetDetailsModal = ({ isOpen, car, onClose, onEdit }: { isOpen: boolean; 
                       {car.specifications.motorPower && (
                         <div className="p-5 text-center">
                           <p className="text-[12px] text-text-muted uppercase tracking-wider font-bold mb-1">Power</p>
-                          <p className="text-[20px] font-black text-text-main">{car.specifications.motorPower} <span className="text-[14px] text-primary-main">kW</span></p>
+                          <p className="text-[20px] font-black text-text-main">{Math.round(car.specifications.motorPower * 1.341)} <span className="text-[14px] text-primary-main">HP</span></p>
                         </div>
                       )}
                       {car.specifications.driveTrain && (
@@ -1129,12 +1180,11 @@ const AssetDetailsModal = ({ isOpen, car, onClose, onEdit }: { isOpen: boolean; 
                  ) : (
                     <div className="space-y-2">
                       {car.internalDocuments.map((doc: any, idx: number) => (
-                        <a 
-                          href={doc.url || doc} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        <DocumentPreviewButton 
+                          url={doc.url || doc} 
+                          title={doc.name || `Attachment ${idx + 1}`}
                           key={idx} 
-                          className="flex items-center justify-between p-3 rounded-2xl border border-border-subtle/30 bg-bg-base hover:border-primary-main/30 hover:bg-bg-secondary transition-all group"
+                          className="flex items-center justify-between p-3 rounded-2xl border border-border-subtle/30 bg-bg-base hover:border-primary-main/30 hover:bg-bg-secondary transition-all group w-full"
                         >
                           <div className="flex items-center gap-3 overflow-hidden">
                             <div className="w-8 h-8 rounded-full bg-primary-main/10 flex items-center justify-center shrink-0">
@@ -1145,7 +1195,7 @@ const AssetDetailsModal = ({ isOpen, car, onClose, onEdit }: { isOpen: boolean; 
                             </p>
                           </div>
                           <ChevronRight size={14} className="text-text-muted shrink-0 group-hover:translate-x-1 transition-transform" />
-                        </a>
+                        </DocumentPreviewButton>
                       ))}
                     </div>
                  )}
@@ -1174,6 +1224,8 @@ const InventoryManager = () => {
   const [printReceiptOpen, setPrintReceiptOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [viewingCar, setViewingCar] = useState<any>(null);
+  const _cachedVehicles = apiCache.get('/vehicles_GET_""');
+  const [loading, setLoading] = useState(!_cachedVehicles);
   const [inventory, setInventory] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1285,6 +1337,7 @@ const InventoryManager = () => {
   const handleVehicleData = (data: any) => {
     const arr = Array.isArray(data) ? data : [];
     setInventory(arr.map(mapVehicle));
+    setLoading(false);
   };
 
   const fetchBranches = async () => {
@@ -1352,6 +1405,16 @@ const InventoryManager = () => {
         (url: any) => typeof url === 'string' && url.trim().length > 0,
       );
       if (validImages.length > 0) payload.images = validImages;
+    }
+
+    if (Array.isArray(formData.internalDocuments) && formData.internalDocuments.length > 0) {
+      const validDocs = formData.internalDocuments.filter(
+        (url: any) => typeof url === 'string' && url.trim().length > 0,
+      );
+      if (validDocs.length > 0) payload.internal_documents = validDocs;
+    } else {
+      // Explicitly send empty array so previously-deleted docs are cleared on update
+      payload.internal_documents = [];
     }
 
     if (formData.specifications?.features && formData.specifications.features.length > 0) {

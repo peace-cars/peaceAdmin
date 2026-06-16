@@ -70,12 +70,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setLoading(false);
               return;
             } else {
-              console.warn('[Admin Auth] Refresh failed, logging out');
-              localStorage.removeItem('admin_session');
-              localStorage.removeItem('admin_role');
-              localStorage.removeItem('admin_location');
-              localStorage.removeItem('admin_selected_branch');
-              setSession(null);
+              console.warn(`[Admin Auth] Refresh failed with status ${res.status}`);
+              if (res.status === 401 || res.status === 403 || res.status === 400) {
+                console.warn('[Admin Auth] Token invalid, logging out');
+                localStorage.removeItem('admin_session');
+                localStorage.removeItem('admin_role');
+                localStorage.removeItem('admin_location');
+                localStorage.removeItem('admin_selected_branch');
+                setSession(null);
+              } else {
+                console.warn('[Admin Auth] Server error during refresh, keeping stale session');
+                setSession(parsed);
+              }
             }
           } else if (!parsed.access_token) {
             // ── Session Repair Path ──────────────────────────────────────────
@@ -104,10 +110,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
               }
             } catch (e) {
-              console.warn('[Admin Auth] Session repair failed, using cookie-only auth');
+              console.warn('[Admin Auth] Session repair failed:', e);
             }
-            // Fall through — cookie auth may still work
-            setSession(parsed);
+            // Repair failed AND token is empty — clear the stale session and
+            // force the user to log in again. Setting an empty-token session
+            // causes all API calls to receive 401.
+            console.warn('[Admin Auth] No valid token could be obtained. Clearing session.');
+            localStorage.removeItem('admin_session');
+            localStorage.removeItem('admin_role');
+            localStorage.removeItem('admin_location');
+            localStorage.removeItem('admin_selected_branch');
+            setSession(null);
           } else {
             // Validate local storage role against session to prevent tampering
             const storedRole = localStorage.getItem('admin_role');
@@ -122,8 +135,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (e) {
           console.error('[Admin Auth] Init error:', e);
-          localStorage.removeItem('admin_session');
-          localStorage.removeItem('admin_selected_branch');
+          if (e instanceof SyntaxError) {
+            localStorage.removeItem('admin_session');
+            localStorage.removeItem('admin_selected_branch');
+          } else {
+            setSession(JSON.parse(stored));
+          }
         }
       }
       setLoading(false);
@@ -232,21 +249,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: data.message || 'Registration failed' };
       }
 
-      if (!data.session) {
-         return { error: 'Registration successful. You can now login.' };
-      }
+      const payload = (data && typeof data === 'object' && 'success' in data && 'data' in data) ? data.data : data;
 
       const sessionData: SessionData = {
-        access_token: '', // Removed for XSS protection
-        refresh_token: '',
-        expires_at: data.session.expires_at,
-        user: data.user,
-        profile: data.profile,
+        access_token: payload.session?.access_token || '',
+        refresh_token: payload.session?.refresh_token || '',
+        expires_at: payload.session?.expires_at || Math.floor(Date.now() / 1000) + 3600,
+        user: payload.user,
+        profile: payload.profile,
       };
 
       localStorage.setItem('admin_session', JSON.stringify(sessionData));
       localStorage.setItem('admin_role', role);
-      localStorage.setItem('admin_branch_id', data.profile?.branch_id || 'HQ');
+      localStorage.setItem('admin_branch_id', payload.profile?.branch_id || 'HQ');
       setSession(sessionData);
 
       // Supabase realtime disabled for now

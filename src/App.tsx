@@ -7,6 +7,8 @@ import { PwaInstallPrompt } from './components/ui/PwaInstallPrompt';
 import { Capacitor } from '@capacitor/core';
 import { unwrapApiResponse, apiFetch } from './lib/api';
 import { fetchWithCache } from './lib/cache';
+import { supabase } from './lib/supabase';
+import { Toaster, toast } from 'react-hot-toast';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Acquisitions = lazy(() => import('./pages/Acquisitions'));
 const InspectionReports = lazy(() => import('./pages/InspectionReports'));
@@ -38,6 +40,77 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     if (session?.user?.id && Capacitor.isNativePlatform()) {
       initializePushNotifications(session.user.id);
     }
+  }, [session]);
+
+  // Keep Realtime JWT in sync on token refresh
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if ((event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && newSession?.access_token) {
+        supabase.realtime.setAuth(newSession.access_token);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Global Realtime Listeners for Admin Toasts
+  useEffect(() => {
+    if (!session?.user?.id || !session?.access_token) return;
+
+    // Authenticate the Realtime WebSocket with the user's JWT
+    supabase.realtime.setAuth(session.access_token);
+
+    const navigate = (path: string) => { window.location.href = path; };
+
+    const notifsChannel = supabase.channel('admin_global_notifs')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `recipient_id=eq.${session.user.id}`
+      }, (payload) => {
+        const notif = payload.new as any;
+        toast.custom((t) => (
+          <div style={{ zIndex: 999999 }} className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl pointer-events-auto flex overflow-hidden`}>
+            <div className="flex-1 w-0 p-4 cursor-pointer" onClick={() => { navigate('/notifications'); toast.dismiss(t.id); }}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-base shrink-0">🔔</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{notif.title || 'New Notification'}</p>
+                  <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{notif.body || notif.message}</p>
+                </div>
+              </div>
+            </div>
+            <button onClick={() => toast.dismiss(t.id)} className="shrink-0 px-4 border-l border-gray-200 dark:border-gray-700 text-xs font-black text-gray-400 hover:text-red-500 transition-colors">✕</button>
+          </div>
+        ), { duration: Infinity, position: 'top-right' });
+        setNotifications(prev => [notif, ...prev]);
+      }).subscribe((status) => console.log('[Admin Realtime] Notifs:', status));
+
+    const msgsChannel = supabase.channel('admin_global_msgs')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages'
+      }, (payload) => {
+        const msg = payload.new as any;
+        if (msg.sender_id !== session.user.id) {
+          toast.custom((t) => (
+            <div style={{ zIndex: 999999 }} className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-sm w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl pointer-events-auto flex overflow-hidden`}>
+              <div className="flex-1 w-0 p-4 cursor-pointer" onClick={() => { navigate('/inbox'); toast.dismiss(t.id); }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base shrink-0">💬</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">New Client Message</p>
+                    <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{msg.text || msg.content}</p>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => toast.dismiss(t.id)} className="shrink-0 px-4 border-l border-gray-200 dark:border-gray-700 text-xs font-black text-gray-400 hover:text-red-500 transition-colors">✕</button>
+            </div>
+          ), { duration: Infinity, position: 'top-right' });
+        }
+      }).subscribe((status) => console.log('[Admin Realtime] Messages:', status));
+
+    return () => {
+      supabase.removeChannel(notifsChannel);
+      supabase.removeChannel(msgsChannel);
+    };
   }, [session]);
 
   // ── Global prefetcher: warm all critical admin caches on login
@@ -178,6 +251,7 @@ function App() {
         </Routes>
       </Suspense>
       <PwaInstallPrompt />
+      <Toaster toastOptions={{ style: { zIndex: 999999 } }} />
     </Router>
   );
 }

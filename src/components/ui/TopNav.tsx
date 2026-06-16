@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { Bell, Search, Menu, Sun, Moon } from 'lucide-react';
+import { Bell, Search, Menu, Sun, Moon, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../lib/ThemeContext';
@@ -116,42 +116,52 @@ export const TopNav: React.FC<TopNavProps> = ({
           </button>
           
           {showNotifs && (
-            <div className="absolute right-0 mt-3 w-80 bg-surface-card/95 backdrop-blur-xl border border-border-subtle/30 rounded-3xl shadow-2xl overflow-hidden z-[200] animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle/30 bg-bg-secondary/20">
-                <div className="flex items-center gap-2">
-                   <span className="text-[13px] font-black text-text-main uppercase tracking-tight">Pulse Notifications</span>
-                   {unreadCount > 0 && <Badge variant="primary" className="text-[9px] h-4">{unreadCount}</Badge>}
+            <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pointer-events-auto">
+              {/* Click outside to close */}
+              <div className="absolute inset-0" onClick={onToggleNotifs} />
+              
+              <div className="relative w-full max-w-md bg-surface-card border border-border-subtle/30 rounded-3xl shadow-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between px-6 py-5 border-b border-border-subtle/30 bg-bg-secondary/20">
+                  <div className="flex items-center gap-2">
+                     <span className="text-[14px] font-black text-text-main uppercase tracking-tight">Pulse Notifications</span>
+                     {unreadCount > 0 && <Badge variant="primary" className="text-[10px] px-1.5 py-0.5">{unreadCount}</Badge>}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button onClick={onMarkAllRead} className="text-[11px] text-primary-main font-bold hover:underline uppercase tracking-wider">Flush All</button>
+                    <button onClick={onToggleNotifs} className="text-text-muted hover:text-text-main transition-colors">
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
-                <button onClick={onMarkAllRead} className="text-[11px] text-primary-main font-bold hover:underline uppercase tracking-wider">Flush All</button>
-              </div>
-              <div className="max-h-[400px] overflow-y-auto divide-y divide-border-subtle/20 no-scrollbar">
-                {notifications.length === 0 ? (
-                  <div className="p-12 text-center flex flex-col items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-bg-secondary/50 flex items-center justify-center text-text-muted/20">
-                       <Bell size={24} />
+                <div className="max-h-[60vh] overflow-y-auto divide-y divide-border-subtle/20 no-scrollbar">
+                  {notifications.length === 0 ? (
+                    <div className="p-12 text-center flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-bg-secondary/50 flex items-center justify-center text-text-muted/20">
+                         <Bell size={24} />
+                      </div>
+                      <p className="text-[12px] font-bold text-text-muted/40 uppercase tracking-widest">Quiet in the registry</p>
                     </div>
-                    <p className="text-[12px] font-bold text-text-muted/40 uppercase tracking-widest">Quiet in the registry</p>
-                  </div>
-                ) : notifications.slice(0, 8).map(n => (
-                  <div key={n.id} className={clsx('px-6 py-4 hover:bg-bg-secondary/40 cursor-pointer transition-colors group', !n.isRead && 'bg-primary-main/[0.03]')}>
-                    <div className="flex items-start justify-between gap-3">
-                      <p className={clsx('text-[13px] font-bold leading-tight', !n.isRead ? 'text-text-main' : 'text-text-muted')}>
-                        {n.title}
-                      </p>
-                      {!n.isRead && <div className="w-1.5 h-1.5 bg-primary-main rounded-full mt-1.5 shrink-0 shadow-sm shadow-primary-main/50" />}
+                  ) : notifications.map(n => (
+                    <div key={n.id} className={clsx('px-6 py-5 hover:bg-bg-secondary/40 cursor-pointer transition-colors group', !n.isRead && 'bg-primary-main/[0.03]')}>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className={clsx('text-[14px] font-bold leading-tight', !n.isRead ? 'text-text-main' : 'text-text-muted')}>
+                          {n.title}
+                        </p>
+                        {!n.isRead && <div className="w-2 h-2 bg-primary-main rounded-full mt-1.5 shrink-0 shadow-sm shadow-primary-main/50" />}
+                      </div>
+                      <p className="text-[13px] text-text-muted/60 mt-2 line-clamp-3 leading-relaxed font-medium">{n.body}</p>
+                      <p className="text-[10px] text-text-muted/30 mt-3 font-bold uppercase tracking-tighter italic">Just now</p>
                     </div>
-                    <p className="text-[12px] text-text-muted/60 mt-1 line-clamp-2 leading-relaxed font-medium">{n.body}</p>
-                    <p className="text-[10px] text-text-muted/30 mt-2 font-bold uppercase tracking-tighter italic">Just now</p>
-                  </div>
-                ))}
-              </div>
-              <div className="p-3 bg-bg-secondary/10 border-t border-border-subtle/30 text-center">
-                 <button 
-                   onClick={() => { navigate('/notifications'); onToggleNotifs(); }}
-                   className="text-[11px] font-black text-primary-main uppercase tracking-widest hover:underline"
-                 >
-                   View All Registry Alerts
-                 </button>
+                  ))}
+                </div>
+                <div className="p-4 bg-bg-secondary/10 border-t border-border-subtle/30 text-center">
+                   <button 
+                     onClick={() => { navigate('/notifications'); onToggleNotifs(); }}
+                     className="text-[11px] font-black text-primary-main uppercase tracking-widest hover:underline"
+                   >
+                     View All Registry Alerts
+                   </button>
+                </div>
               </div>
             </div>
           )}

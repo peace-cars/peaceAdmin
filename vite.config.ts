@@ -15,8 +15,8 @@ export default defineConfig({
         name: 'PeaceCars Admin',
         short_name: 'PC Admin',
         description: 'Admin Dashboard for PeaceCars',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#2563EB',
+        background_color: '#2563EB',
         display: 'standalone',
         icons: [
           {

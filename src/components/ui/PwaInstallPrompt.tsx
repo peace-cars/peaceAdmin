@@ -32,7 +32,7 @@ export const PwaInstallPrompt = () => {
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-24 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-96 bg-surface-card border border-border-subtle rounded-2xl shadow-xl z-[9999] overflow-hidden"
+          className="fixed bottom-24 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:w-96 bg-white dark:bg-black border border-border-subtle rounded-2xl shadow-xl z-[9999] overflow-hidden"
         >
           <div className="p-4 flex items-start gap-4">
             <div className="w-12 h-12 bg-primary-main/10 rounded-xl flex items-center justify-center shrink-0">

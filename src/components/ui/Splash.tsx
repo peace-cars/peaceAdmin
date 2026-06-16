@@ -25,7 +25,7 @@ export default function Splash({ onComplete }: SplashProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black ${
+      className={`fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-blue-600 ${
         fadeExit
           ? 'opacity-0 scale-[1.04] pointer-events-none'
           : 'opacity-100 scale-100'

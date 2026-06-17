@@ -18,28 +18,11 @@ export function CapacitorBackButtonHandler() {
     let handler: any;
 
     const setupListener = async () => {
-      handler = await App.addListener('backButton', () => {
-        // Paths considered root pages where pressing back prompts app exit
-        const rootPaths = ['/', '/login', '/acquisitions', '/inspections', '/inbox', '/inventory', '/staff', '/branches', '/people', '/commissions', '/budgets', '/reports', '/finance', '/library', '/archive', '/notifications'];
-        const currentPath = location.pathname.toLowerCase();
-        
-        // Check if current page is a root/home page
-        const isRoot = rootPaths.includes(currentPath) || currentPath === '/' || currentPath === '';
-
-        // Use history length to determine if we can go back
-        // history.length > 1 means there's a page before the current one
-        const canGoBack = window.history.length > 1;
-
-        if (canGoBack && !isRoot) {
-          // If we can go back and we are in a subpage, navigate back and scroll to top
-          window.scrollTo(0, 0);
-          navigate(-1);
-        } else if (!isRoot && canGoBack) {
-          // Fallback: if not at root but can go back, do it anyway
+      handler = await App.addListener('backButton', ({ canGoBack }) => {
+        if (canGoBack) {
           window.scrollTo(0, 0);
           navigate(-1);
         } else {
-          // At root page: trigger confirmation dialog for app exit
           setShowExitModal(true);
         }
       });

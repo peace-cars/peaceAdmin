@@ -13,11 +13,9 @@ const getApiBase = () => {
     
   let apiBase = 'https://backend-eabm.onrender.com';
   
-  if (isNative) {
-    apiBase = 'http://10.0.2.2:3000';
-  } else if (import.meta.env.VITE_API_URL) {
+  if (import.meta.env.VITE_API_URL) {
     apiBase = import.meta.env.VITE_API_URL;
-  } else if (isLocalhost) {
+  } else if (isLocalhost && !isNative) {
     apiBase = 'http://localhost:3000';
   }
 
@@ -35,11 +33,9 @@ const getBackendHosts = () => {
     
   let activeHost = 'https://backend-eabm.onrender.com';
   
-  if (isNative) {
-    activeHost = 'http://10.0.2.2:3000';
-  } else if (import.meta.env.VITE_API_URL) {
+  if (import.meta.env.VITE_API_URL) {
     activeHost = import.meta.env.VITE_API_URL.replace(/\/+$/, '');
-  } else if (isLocalhost) {
+  } else if (isLocalhost && !isNative) {
     activeHost = 'http://localhost:3000';
   }
   
@@ -65,7 +61,8 @@ window.fetch = async function (input: any, init?: any) {
       host &&
       url.startsWith(host) &&
       !url.startsWith(`${host}/api/v1`) &&
-      !url.startsWith(`${host}/api/`)
+      !url.startsWith(`${host}/api/`) &&
+      !url.startsWith(`${host}/socket.io`)
     ) {
       const suffix = url.slice(host.length);
       url = apiBase + (suffix.startsWith('/') ? suffix : `/${suffix}`);

@@ -1,34 +1,51 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/auth';
+import { useSearchParams } from 'react-router-dom';
 import {
   MessageSquare,
   Send,
-  Clock,
   Car,
   User,
-  Search,
   CheckCircle,
-  AlertCircle,
   Phone,
   ChevronRight,
   ChevronLeft,
   Inbox,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { unwrapApiResponse } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { Badge } from '../components/ui/Badge';
+
+// ── Same glass pill constant as TopNav ───────────────────────────────────────
+const GLASS =
+  'bg-white/40 backdrop-blur-2xl border border-white/30 shadow-[0_8px_32px_-8px_rgba(15,23,42,0.25)] dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.55)]';
+
+interface OptimisticMessage {
+  _optimistic?: boolean;
+  _failed?: boolean;
+  id: string;
+  text: string;
+  created_at: string;
+  sender_id: string;
+  profiles?: { full_name?: string };
+}
 
 export default function SupportInbox() {
   const { session } = useAuth();
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<OptimisticMessage[]>([]);
   const [inputText, setInputText] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchConversations();
@@ -38,9 +55,7 @@ export default function SupportInbox() {
         fetchConversations(),
       )
       .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
@@ -50,18 +65,17 @@ export default function SupportInbox() {
         .channel(`messages_${selectedConvId}`)
         .on(
           'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `conversation_id=eq.${selectedConvId}`,
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConvId}` },
+          (payload) => {
+            // If the new message is from someone else (not us), append it
+            const newMsg = payload.new as OptimisticMessage;
+            if (newMsg.sender_id !== session?.user?.id) {
+              setMessages((prev) => [...prev, newMsg]);
+            }
           },
-          () => fetchMessages(selectedConvId),
         )
         .subscribe();
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      return () => { supabase.removeChannel(channel); };
     }
   }, [selectedConvId]);
 
@@ -69,18 +83,19 @@ export default function SupportInbox() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Auto-focus input when conversation selected
+  useEffect(() => {
+    if (selectedConvId) {
+      setTimeout(() => inputRef.current?.focus(), 200);
+    }
+  }, [selectedConvId]);
+
   const fetchConversations = async () => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/conversations`,
-        {
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        },
-      );
-      if (res.ok) {
-        const result = unwrapApiResponse(await res.json());
-        setConversations(Array.isArray(result) ? result : []);
-      }
+      const result = await apiFetch<any[]>('/messages/conversations', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      setConversations(Array.isArray(result) ? result : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -90,16 +105,10 @@ export default function SupportInbox() {
 
   const fetchMessages = async (convId: string) => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/${convId}`,
-        {
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        },
-      );
-      if (res.ok) {
-        const result = unwrapApiResponse(await res.json());
-        setMessages(Array.isArray(result) ? result : []);
-      }
+      const result = await apiFetch<any[]>(`/messages/${convId}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      setMessages(Array.isArray(result) ? result : []);
     } catch (e) {
       console.error(e);
     }
@@ -107,27 +116,42 @@ export default function SupportInbox() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !selectedConvId) return;
+    const text = inputText.trim();
+    if (!text || !selectedConvId || isSending) return;
+
+    // ── Optimistic update ─────────────────────────────────────────────────────
+    const tempId = `optimistic_${Date.now()}`;
+    const optimisticMsg: OptimisticMessage = {
+      _optimistic: true,
+      id: tempId,
+      text,
+      created_at: new Date().toISOString(),
+      sender_id: session?.user?.id || '',
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+    setInputText('');
+    setIsSending(true);
+
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({ conversationId: selectedConvId, text: inputText }),
-        },
+      const newMessage = await apiFetch<any>('/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ conversationId: selectedConvId, text }),
+      });
+      // Replace optimistic message with the real one
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...newMessage, _optimistic: false } : m)),
       );
-      if (res.ok) {
-        const newMessage = unwrapApiResponse(await res.json());
-        setMessages([...messages, newMessage]);
-        setInputText('');
-        fetchConversations();
-      }
+      fetchConversations();
     } catch (e) {
       console.error(e);
+      // Mark as failed so user can see it didn't send
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, _failed: true, _optimistic: false } : m)),
+      );
+      setInputText(text); // restore text
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -145,6 +169,7 @@ export default function SupportInbox() {
   const getTimeAgo = (date: string) => {
     const diff = Date.now() - new Date(date).getTime();
     const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
     if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
@@ -152,45 +177,44 @@ export default function SupportInbox() {
   };
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col gap-6">
-      <div className="flex-1 bg-surface-card border border-border-subtle/30 rounded-2xl overflow-hidden flex shadow-sm min-h-0 relative">
-        {/* Conversation List */}
+    // Full-page fixed: sits below topnav, above bottom nav
+    <div
+      className="fixed inset-x-0 z-[50] flex gap-0 md:gap-4 md:px-8 md:pb-8 bg-bg-base"
+      style={{
+        top: 'calc(3.75rem + env(safe-area-inset-top, 0px))',
+        bottom: 0,
+      }}
+    >
+      <div className="flex-1 flex overflow-hidden rounded-none md:rounded-2xl border-0 md:border md:border-border-subtle/30 md:shadow-sm bg-surface-card relative min-h-0 w-full">
+
+        {/* ── Conversation List ───────────────────────────────────────────── */}
         <div
           className={cn(
-            'w-full md:w-[340px] border-r border-border-subtle/30 flex-col bg-surface-card shrink-0 absolute md:relative z-10 inset-0 md:inset-auto',
+            'w-full md:w-[320px] border-r border-border-subtle/20 flex-col shrink-0 absolute md:relative inset-0 md:inset-auto z-10',
             selectedConvId ? 'hidden md:flex' : 'flex',
           )}
         >
-          <div className="p-4 border-b border-border-subtle/30">
-            <div className="relative">
-              <Search
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted/30"
-                size={14}
-              />
-              <input
-                type="text"
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-bg-secondary border border-border-subtle/30 rounded-xl text-[11px] font-bold text-text-main placeholder:text-text-muted/30 focus:outline-none focus:border-primary-main/30 transition-all"
-              />
-            </div>
+          {/* List header */}
+          <div className={cn('mx-3 mt-3 mb-2 shrink-0 px-4 py-3 rounded-2xl flex items-center gap-2.5', GLASS)}>
+            <Inbox size={16} className="text-text-secondary shrink-0" />
+            <span className="text-[13px] font-bold text-text-main tracking-tight flex-1">Support Inbox</span>
+            {conversations.filter(c => c.status === 'UNCLAIMED').length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-error text-white">
+                {conversations.filter(c => c.status === 'UNCLAIMED').length}
+              </span>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar">
             {loading ? (
-              <div className="p-8 text-center">
-                <div className="w-8 h-8 border-3 border-primary-main/20  rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-[12px] font-bold text-text-muted font-medium">
-                  Loading conversations...
-                </p>
+              <div className="p-8 text-center flex flex-col items-center gap-3">
+                <Loader2 size={20} className="text-text-muted/40 animate-spin" />
+                <p className="text-[12px] font-medium text-text-muted">Loading conversations…</p>
               </div>
             ) : filteredConvs.length === 0 ? (
               <div className="p-10 text-center flex flex-col items-center gap-3">
                 <MessageSquare size={24} className="text-text-muted/20" />
-                <p className="text-[13px] font-bold text-text-muted font-medium">
-                  No conversations found
-                </p>
+                <p className="text-[13px] font-medium text-text-muted">No conversations found</p>
               </div>
             ) : (
               filteredConvs.map((conv) => (
@@ -198,50 +222,43 @@ export default function SupportInbox() {
                   key={conv.id}
                   onClick={() => setSelectedConvId(conv.id)}
                   className={cn(
-                    'w-full text-left p-4 border-b border-border-subtle/30 hover:bg-bg-secondary/50 transition-all flex gap-3 relative group',
-                    selectedConvId === conv.id &&
-                      'bg-primary-main/10  ',
+                    'w-full text-left px-4 py-3.5 border-b border-border-subtle/20 hover:bg-bg-secondary/50 transition-all flex gap-3',
+                    selectedConvId === conv.id && 'bg-primary-main/8',
                   )}
                 >
                   <div
                     className={cn(
-                      'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold border',
+                      'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold border',
                       selectedConvId === conv.id
                         ? 'bg-primary-main text-white border-primary-main'
                         : 'bg-bg-secondary text-text-muted/60 border-border-subtle/30',
                     )}
                   >
-                    {conv.profiles?.full_name?.charAt(0) || <User size={16} />}
+                    {conv.profiles?.full_name?.charAt(0) || <User size={14} />}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <span className="font-bold text-text-main text-[12px] tracking-tight truncate pr-2 flex items-center gap-2">
+                    <div className="flex justify-between items-start gap-1">
+                      <span className="font-bold text-text-main text-[12px] truncate flex items-center gap-1.5">
                         {conv.profiles?.full_name || 'Customer'}
                         {conv.status === 'UNCLAIMED' && (
-                          <span className="w-2 h-2 rounded-full bg-error" title="Unclaimed"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-error shrink-0" />
                         )}
                         {conv.status === 'RESOLVED' && (
-                          <span title="Resolved">
-                            <CheckCircle size={12} className="text-green-500" />
-                          </span>
+                          <CheckCircle size={11} className="text-green-500 shrink-0" />
                         )}
                       </span>
-                      <span className="text-[11px] text-text-muted font-medium shrink-0">
-                        {getTimeAgo(conv.updated_at)}
-                      </span>
+                      <span className="text-[10px] text-text-muted shrink-0">{getTimeAgo(conv.updated_at)}</span>
                     </div>
-
                     {conv.vehicles && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <Car size={10} className="text-primary-main shrink-0" />
-                        <span className="text-[12px] font-bold text-primary-main truncate">
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Car size={9} className="text-primary-main shrink-0" />
+                        <span className="text-[11px] font-semibold text-primary-main truncate">
                           {conv.vehicles.year} {conv.vehicles.make} {conv.vehicles.model}
                         </span>
                       </div>
                     )}
-
-                    <p className="text-[13px] text-text-muted truncate mt-1 leading-tight">
+                    <p className="text-[12px] text-text-muted truncate mt-0.5 leading-snug">
                       {conv.last_message || 'No messages yet'}
                     </p>
                   </div>
@@ -251,155 +268,161 @@ export default function SupportInbox() {
           </div>
         </div>
 
-        {/* Chat Area */}
+        {/* ── Chat Area ──────────────────────────────────────────────────── */}
         <div
           className={cn(
-            'flex-grow flex flex-col bg-bg-secondary/20 h-full',
+            'flex-grow flex flex-col bg-bg-secondary/20 min-h-0',
             !selectedConvId
               ? 'hidden md:flex'
-              : 'flex max-md:fixed max-md:inset-0 max-md:z-[150] max-md:bg-bg-base',
+              : 'flex max-md:fixed max-md:inset-0 max-md:z-[200] max-md:bg-bg-base',
           )}
         >
+          {/* Hide top nav + bottom nav on mobile when chatting */}
+          {selectedConvId && (
+            <style>{`
+              @media (max-width: 1023px) {
+                #admin-top-nav, #admin-bottom-nav { display: none !important; }
+              }
+            `}</style>
+          )}
           {selectedConv ? (
             <>
-              {/* Chat Header */}
-              <div className="px-4 md:px-6 py-4 bg-surface-card border-b border-border-subtle/30 flex items-center justify-between shrink-0 max-md:pt-[calc(1rem+env(safe-area-inset-top))]">
-                <div className="flex items-center gap-3 md:gap-4">
-                  <button
-                    className="md:hidden p-2 -ml-2 text-text-muted hover:text-text-main rounded-lg active:bg-bg-secondary"
-                    onClick={() => setSelectedConvId(null)}
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <div className="w-10 h-10 rounded-xl bg-primary-main/20 text-primary-main flex items-center justify-center font-bold text-sm border border-primary-main/20">
-                    {selectedConv.profiles?.full_name?.charAt(0) || <User size={18} />}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-text-main tracking-tight">
-                      {selectedConv.profiles?.full_name || 'Customer'}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      {selectedConv.vehicles && (
-                        <span className="text-[12px] font-bold text-text-muted font-medium flex items-center gap-1.5">
-                          <Car size={10} className="text-primary-main" />
-                          {selectedConv.vehicles.year} {selectedConv.vehicles.make}{' '}
-                          {selectedConv.vehicles.model}
-                        </span>
-                      )}
-                      {selectedConv.profiles?.phone_number && (
-                        <a
-                          href={`tel:${selectedConv.profiles.phone_number}`}
-                          className="text-[12px] font-bold text-text-muted font-medium flex items-center gap-1.5 hover:text-primary-main transition-colors"
-                        >
-                          <Phone size={10} /> {selectedConv.profiles.phone_number}
-                        </a>
-                      )}
+              {/* ── Floating glass header ────────────────────────────────── */}
+              <div className="px-3 pt-3 pb-2 shrink-0 max-md:pt-[calc(0.75rem+env(safe-area-inset-top,16px))]">
+                <div className={cn('flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl', GLASS)}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <button
+                      className="md:hidden p-1.5 -ml-1 text-text-muted hover:text-text-main rounded-lg active:bg-bg-secondary transition-colors shrink-0"
+                      onClick={() => setSelectedConvId(null)}
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <div className="w-8 h-8 rounded-xl bg-primary-main/20 text-primary-main flex items-center justify-center font-bold text-sm border border-primary-main/20 shrink-0">
+                      {selectedConv.profiles?.full_name?.charAt(0) || <User size={14} />}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-[13px] font-bold text-text-main leading-tight truncate">
+                        {selectedConv.profiles?.full_name || 'Customer'}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {selectedConv.vehicles && (
+                          <span className="text-[11px] font-semibold text-text-muted flex items-center gap-1">
+                            <Car size={9} className="text-primary-main" />
+                            {selectedConv.vehicles.year} {selectedConv.vehicles.make} {selectedConv.vehicles.model}
+                          </span>
+                        )}
+                        {selectedConv.profiles?.phone_number && (
+                          <a
+                            href={`tel:${selectedConv.profiles.phone_number}`}
+                            className="text-[11px] font-semibold text-text-muted flex items-center gap-1 hover:text-primary-main transition-colors"
+                          >
+                            <Phone size={9} /> {selectedConv.profiles.phone_number}
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {selectedConv.status === 'UNCLAIMED' && (
-                    <button
-                      onClick={async () => {
-                        await fetch(
-                          `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/${selectedConv.id}/claim`,
-                          {
-                            method: 'PATCH',
-                            headers: { Authorization: `Bearer ${session?.access_token}` },
-                          },
-                        );
-                        fetchConversations();
-                      }}
-                      className="px-3 py-1.5 bg-primary-main text-white text-[11px] font-bold rounded-lg shadow-sm hover:bg-primary-main/90 transition-all flex items-center gap-1"
-                    >
-                      Claim <ChevronRight size={14} />
-                    </button>
-                  )}
-                  {selectedConv.status === 'CLAIMED' &&
-                    selectedConv.assigned_staff_id === session?.user?.id && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedConv.status === 'UNCLAIMED' && (
                       <button
                         onClick={async () => {
-                          await fetch(
-                            `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/messages/${selectedConv.id}/resolve`,
-                            {
-                              method: 'PATCH',
-                              headers: { Authorization: `Bearer ${session?.access_token}` },
-                            },
-                          );
+                          await apiFetch(`/messages/${selectedConv.id}/claim`, {
+                            method: 'PATCH',
+                            headers: { Authorization: `Bearer ${session?.access_token}` },
+                          });
                           fetchConversations();
                         }}
-                        className="px-3 py-1.5 bg-green-500/10 text-green-500 border border-green-500/20 text-[11px] font-bold rounded-lg shadow-sm hover:bg-green-500/20 transition-all flex items-center gap-1"
+                        className="px-2.5 py-1 bg-primary-main text-white text-[10px] font-bold rounded-lg hover:bg-primary-main/90 transition-all flex items-center gap-1 active:scale-95"
                       >
-                        <CheckCircle size={14} /> Resolve
+                        Claim <ChevronRight size={12} />
                       </button>
                     )}
-                  <Badge
-                    variant={
-                      selectedConv.status === 'RESOLVED'
-                        ? 'success'
-                        : selectedConv.status === 'CLAIMED'
-                          ? 'warning'
-                          : 'error'
-                    }
-                    className="text-[11px]"
-                  >
-                    {selectedConv.status || 'ACTIVE'}
-                  </Badge>
+                    {selectedConv.status === 'CLAIMED' &&
+                      selectedConv.assigned_staff_id === session?.user?.id && (
+                        <button
+                          onClick={async () => {
+                            await apiFetch(`/messages/${selectedConv.id}/resolve`, {
+                              method: 'PATCH',
+                              headers: { Authorization: `Bearer ${session?.access_token}` },
+                            });
+                            fetchConversations();
+                          }}
+                          className="px-2.5 py-1 bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-bold rounded-lg hover:bg-green-500/20 transition-all flex items-center gap-1 active:scale-95"
+                        >
+                          <CheckCircle size={12} /> Resolve
+                        </button>
+                      )}
+                    <Badge
+                      variant={
+                        selectedConv.status === 'RESOLVED'
+                          ? 'success'
+                          : selectedConv.status === 'CLAIMED'
+                            ? 'warning'
+                            : 'error'
+                      }
+                      className="text-[10px]"
+                    >
+                      {selectedConv.status || 'ACTIVE'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+              {/* ── Messages area ─────────────────────────────────────────── */}
+              <div className="flex-1 overflow-y-auto px-4 md:px-6 py-3 space-y-4 no-scrollbar min-h-0">
+                {/* Vehicle card */}
                 {selectedConv.vehicles && (
-                  <div className="bg-bg-secondary border border-border-subtle/30 rounded-2xl p-4 flex gap-4 items-center shadow-sm max-w-sm mx-auto mb-4">
-                    <div className="w-12 h-10 bg-bg-secondary rounded-xl flex items-center justify-center shrink-0 border border-border-subtle/30">
-                      <Car className="text-text-muted/40" size={18} />
+                  <div className="bg-bg-secondary border border-border-subtle/30 rounded-2xl p-3 flex gap-3 items-center shadow-sm max-w-xs mx-auto mb-2">
+                    <div className="w-10 h-9 bg-bg-secondary rounded-xl flex items-center justify-center shrink-0 border border-border-subtle/30">
+                      <Car className="text-text-muted/40" size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-text-main tracking-tight truncate">
-                        {selectedConv.vehicles.year} {selectedConv.vehicles.make}{' '}
-                        {selectedConv.vehicles.model}
+                      <p className="text-[12px] font-bold text-text-main truncate">
+                        {selectedConv.vehicles.year} {selectedConv.vehicles.make} {selectedConv.vehicles.model}
                       </p>
-                      <p className="text-[11px] font-bold text-text-muted font-medium">
-                        Vehicle Inquiry Thread
-                      </p>
+                      <p className="text-[10px] font-medium text-text-muted">Vehicle Inquiry Thread</p>
                     </div>
                   </div>
                 )}
 
                 {messages.length === 0 ? (
-                  <div className="h-full flex items-center justify-center pt-10">
-                    <p className="text-[13px] font-bold text-text-muted font-medium">
-                      Start the conversation...
-                    </p>
+                  <div className="h-40 flex items-center justify-center">
+                    <p className="text-[13px] font-medium text-text-muted/60">Start the conversation…</p>
                   </div>
                 ) : (
-                  messages.map((msg, i) => {
+                  messages.map((msg) => {
                     const isStaff = msg.sender_id === session?.user?.id;
                     return (
-                      <div key={i} className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}>
-                        <div
-                          className={`max-w-[70%] flex flex-col ${isStaff ? 'items-end' : 'items-start'}`}
-                        >
-                          <span className="text-[12px] font-bold text-text-muted font-medium mb-1 px-2">
+                      <div key={msg.id} className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[72%] flex flex-col ${isStaff ? 'items-end' : 'items-start'}`}>
+                          <span className="text-[11px] font-semibold text-text-muted mb-1 px-2">
                             {isStaff ? 'You' : msg.profiles?.full_name || 'Customer'}
                           </span>
                           <div
                             className={cn(
-                              'px-4 py-3 text-[12px] font-medium shadow-sm leading-relaxed',
+                              'px-4 py-2.5 text-[13px] font-medium shadow-sm leading-relaxed transition-opacity',
                               isStaff
                                 ? 'bg-primary-main text-white rounded-2xl rounded-tr-md'
                                 : 'bg-surface-card border border-border-subtle/30 text-text-main rounded-2xl rounded-tl-md',
+                              msg._optimistic && 'opacity-60',
+                              msg._failed && 'opacity-60 border-error border',
                             )}
                           >
                             {msg.text}
+                            {msg._optimistic && (
+                              <Loader2 size={10} className="inline ml-1.5 animate-spin opacity-60" />
+                            )}
+                            {msg._failed && (
+                              <span className="inline-flex items-center gap-1 ml-1.5 text-error text-[10px]">
+                                <AlertCircle size={10} /> Failed
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[11px] text-text-muted font-bold px-2 mt-1 font-medium">
-                            {new Date(msg.created_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                          <span className="text-[10px] text-text-muted px-2 mt-1 font-medium">
+                            {msg._optimistic
+                              ? 'Sending…'
+                              : new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       </div>
@@ -409,22 +432,41 @@ export default function SupportInbox() {
                 <div ref={scrollRef} />
               </div>
 
-              {/* Input */}
-              <div className="p-4 bg-surface-card border-t border-border-subtle/30 shrink-0">
-                <form onSubmit={handleSendMessage} className="flex gap-3">
+              {/* ── Floating glass input bar ───────────────────────────────── */}
+              <div className="px-3 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
+                <form
+                  onSubmit={handleSendMessage}
+                  className={cn('flex items-center gap-2.5 px-3 py-2 rounded-[26px]', GLASS)}
+                >
                   <input
+                    ref={inputRef}
                     type="text"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Type your reply..."
-                    className="flex-1 bg-bg-secondary border border-border-subtle/30 rounded-xl px-5 py-3 text-[12px] font-medium text-text-main placeholder:text-text-muted/30 focus:outline-none focus:border-primary-main/30 transition-all"
+                    placeholder="Type your reply…"
+                    disabled={isSending}
+                    className="flex-1 bg-transparent text-[13px] font-medium text-text-main placeholder:text-text-muted/40 focus:outline-none disabled:opacity-60 min-w-0"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e as any);
+                      }
+                    }}
                   />
                   <button
                     type="submit"
-                    disabled={!inputText.trim()}
-                    className="bg-primary-main text-white px-6 py-3 rounded-xl hover:bg-primary-main/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed font-bold flex items-center gap-2 text-[11px] active:scale-95 shadow-md shadow-primary-main/20"
+                    disabled={!inputText.trim() || isSending}
+                    className={cn(
+                      'shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90',
+                      'bg-primary-main text-white shadow-md shadow-primary-main/25',
+                      'disabled:opacity-40 disabled:cursor-not-allowed',
+                    )}
                   >
-                    Send <Send size={14} />
+                    {isSending ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Send size={15} />
+                    )}
                   </button>
                 </form>
               </div>
@@ -435,12 +477,8 @@ export default function SupportInbox() {
                 <MessageSquare size={28} className="text-text-muted/20" />
               </div>
               <div className="text-center space-y-1">
-                <p className="text-sm font-bold text-text-main tracking-tight">
-                  Select a conversation
-                </p>
-                <p className="text-[13px] font-bold text-text-muted font-medium">
-                  Choose from the list to start chatting
-                </p>
+                <p className="text-sm font-bold text-text-main tracking-tight">Select a conversation</p>
+                <p className="text-[13px] font-medium text-text-muted">Choose from the list to start chatting</p>
               </div>
             </div>
           )}

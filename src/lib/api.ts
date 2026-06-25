@@ -62,7 +62,7 @@ async function attemptTokenRefresh(): Promise<string | null> {
     console.error('[Admin API] Token refresh failed (network/server error):', err);
     // DO NOT force logout on network errors
     onTokenRefreshed(null);
-    return null;
+    throw err;
   } finally {
     isRefreshing = false;
   }
@@ -85,7 +85,12 @@ const getApiUrl = () => {
   const isNative = Capacitor.isNativePlatform();
   const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   
-  let base = isLocalhost && !isNative ? 'http://localhost:3000' : 'https://backend-eabm.onrender.com';
+  let base = isLocalhost && !isNative 
+    ? 'http://127.0.0.1:3000' 
+    : isNative 
+      ? 'http://192.168.1.6:3000' // TEMP: Test locally on Android
+      : 'https://backend-eabm.onrender.com';
+
   
   if (!base.endsWith('/api/v1')) {
     base = base.replace(/\/+$/, '') + '/api/v1';

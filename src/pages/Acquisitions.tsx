@@ -618,8 +618,8 @@ const Acquisitions = () => {
     <div className="animate-fade-in relative min-h-screen pb-24">
 
       {/* ─── DESKTOP STICKY HEADER ─── */}
-      <div className="hidden md:block sticky top-0 z-40 -mx-4 md:-mx-8 -mt-5 md:-mt-8 border-b border-border-subtle/30 bg-bg-base/95 px-4 py-4 shadow-sm backdrop-blur-md md:px-8 mb-6">
-        <div className="rounded-[28px] border border-border-subtle/70 bg-surface-card/95 p-4 shadow-[0_18px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl md:p-5">
+      <div className="hidden md:block sticky top-0 z-30 -mx-4 md:-mx-8 -mt-1 md:-mt-4 border-b border-border-subtle/30 bg-bg-base px-4 py-4 shadow-sm md:px-8">
+        <div className="rounded-[28px] border border-border-subtle/70 bg-surface-card p-4 shadow-[0_18px_30px_-18px_rgba(15,23,42,0.35)] md:p-5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             {/* Stage tab bar */}
             <StageTabBar
@@ -681,7 +681,7 @@ const Acquisitions = () => {
       <div className="md:hidden flex flex-col gap-4">
 
         {/* ── Single sticky banner: ALL BRANCHES + Pipeline title + Stage tabs ── */}
-        <div className="sticky top-0 z-40 bg-bg-base -mx-4 px-4 pb-2">
+        <div className="sticky top-0 z-40 bg-bg-base border-b border-border-subtle/30 shadow-sm -mx-4 px-4 pb-2 -mt-1">
           {/* Row 1: Branch label (set from Dashboard) */}
           <div className="h-[40px] flex items-center">
             <span className="text-text-main font-black uppercase tracking-wide text-[16px]">

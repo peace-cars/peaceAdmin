@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   MapPin, Plus, Power, Phone, Users, X, Building2, Globe, Activity,
-  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Crown, Network, Briefcase, Edit
+  ChevronDown, ChevronRight, UserPlus, ShieldCheck, Crown, Network, Briefcase, Edit, Trash2
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
@@ -143,6 +143,17 @@ export default function BranchManagement() {
     } catch (e: any) {}
   };
 
+  const deleteBranch = async (id: string) => {
+    if (!window.confirm('Are you sure you want to permanently delete this hub? This action cannot be undone.')) return;
+    try {
+      const res = await api.delete<any>(`/locations/${id}`);
+      if (res.success) {
+        apiCache.clear();
+        fetchBranches();
+      } else alert(res.message || 'Failed to delete branch');
+    } catch (e: any) { alert(e?.message || 'Error deleting branch'); }
+  };
+
   const availableDMs = people.filter((p) => p.role === 'DISTRICT_MANAGER' && !branches.some((b) => b.manager_id === p.id));
   const availableStaff = people.filter((p) => (p.role === 'STAFF' || p.role === 'BROKER') && p.locationId !== showAddStaff);
 
@@ -188,6 +199,7 @@ export default function BranchManagement() {
         role={role}
         onToggleExpand={toggleExpand}
         onToggleActive={toggleBranchActive}
+        onDeleteBranch={deleteBranch}
         onUnassignDM={unassignDM}
         onShowAssignDM={(id) => { setShowAssignDM(id); setSelectedDM(''); }}
         onShowAddStaff={(id) => { setShowAddStaff(id); setStaffForm({ personId: '' }); }}
@@ -200,6 +212,7 @@ export default function BranchManagement() {
         role={role}
         onToggleExpand={toggleExpand}
         onToggleActive={toggleBranchActive}
+        onDeleteBranch={deleteBranch}
         onUnassignDM={unassignDM}
         onShowAssignDM={(id) => { setShowAssignDM(id); setSelectedDM(''); }}
         onShowAddStaff={(id) => { setShowAddStaff(id); setStaffForm({ personId: '' }); }}
@@ -228,7 +241,7 @@ const MobileKpis = ({ branches, activeBranches, assignedDMs, totalStaff }: any) 
   </div>
 );
 
-const DesktopTable = ({ branches, expandedBranch, branchStaff, role, onToggleExpand, onToggleActive, onUnassignDM, onShowAssignDM, onShowAddStaff, onShowEdit }: any) => (
+const DesktopTable = ({ branches, expandedBranch, branchStaff, role, onToggleExpand, onToggleActive, onDeleteBranch, onUnassignDM, onShowAssignDM, onShowAddStaff, onShowEdit }: any) => (
   <div className="bg-surface-card rounded-[24px] shadow-sm border border-border-subtle/30 p-2 hidden md:block">
     <div className="flex flex-col gap-1.5 p-6 border-b border-border-subtle/30">
       <h2 className="text-[14px] font-black text-text-main">Regional Architecture Ledger</h2>
@@ -320,6 +333,9 @@ const DesktopTable = ({ branches, expandedBranch, branchStaff, role, onToggleExp
                           <Button variant="outline" size="sm" onClick={() => onShowAddStaff(branch.id)} className="h-9 text-[11px] font-bold rounded-xl bg-surface-card border-border-subtle/30 shadow-sm"><UserPlus size={12} className="mr-1.5" /> Add Staff</Button>
                           <Button variant="outline" size="sm" onClick={() => onShowEdit(branch)} className="h-9 text-[11px] font-bold rounded-xl bg-surface-card border-border-subtle/30 shadow-sm"><Edit size={12} className="mr-1.5" /> Edit</Button>
                           <Button variant="outline" size="sm" onClick={() => onToggleActive(branch.id)} className="h-9 text-[11px] font-bold rounded-xl bg-surface-card border-border-subtle/30 shadow-sm"><Power size={12} className="mr-1.5" /> Toggle Power</Button>
+                          {role === 'GENERAL_MANAGER' && (
+                            <Button variant="outline" size="sm" onClick={() => onDeleteBranch(branch.id)} className="h-9 text-[11px] font-bold rounded-xl border-error-main/20 text-error-main hover:bg-error-main/10"><Trash2 size={12} className="mr-1.5" /> Delete Hub</Button>
+                          )}
                         </div>
                       </div>
                       
@@ -358,7 +374,7 @@ const DesktopTable = ({ branches, expandedBranch, branchStaff, role, onToggleExp
   </div>
 );
 
-const MobileGrid = ({ branches, expandedBranch, branchStaff, role, onToggleExpand, onToggleActive, onUnassignDM, onShowAssignDM, onShowAddStaff, onShowEdit }: any) => (
+const MobileGrid = ({ branches, expandedBranch, branchStaff, role, onToggleExpand, onToggleActive, onDeleteBranch, onUnassignDM, onShowAssignDM, onShowAddStaff, onShowEdit }: any) => (
   <div className="flex flex-col gap-3 md:hidden">
     <div className="flex items-center justify-between px-1">
       <p className="text-[15px] font-black text-text-main">Regional Hubs</p>
@@ -417,6 +433,9 @@ const MobileGrid = ({ branches, expandedBranch, branchStaff, role, onToggleExpan
                 <Button variant="outline" size="sm" onClick={() => onShowAddStaff(branch.id)} className="h-9 flex-1 text-[11px] bg-surface-card">Add Staff</Button>
                 <Button variant="outline" size="sm" onClick={() => onShowEdit(branch)} className="h-9 w-10 p-0 flex items-center justify-center shrink-0 bg-surface-card"><Edit size={14} /></Button>
                 <Button variant="outline" size="sm" onClick={() => onToggleActive(branch.id)} className="h-9 w-10 p-0 flex items-center justify-center shrink-0 bg-surface-card"><Power size={14} /></Button>
+                {role === 'GENERAL_MANAGER' && (
+                  <Button variant="outline" size="sm" onClick={() => onDeleteBranch(branch.id)} className="h-9 w-10 p-0 flex items-center justify-center shrink-0 border-error-main/20 text-error-main"><Trash2 size={14} /></Button>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">

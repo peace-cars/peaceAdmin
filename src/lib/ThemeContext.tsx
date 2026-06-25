@@ -1,10 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
+export type CardAccent = 'none' | 'solid-blue' | 'solid-green' | 'solid-amber' | 'solid-rose' | 'solid-purple' | 'light-blue' | 'light-green' | 'light-amber' | 'light-rose' | 'light-purple';
+export type BgGradient = 'default' | 'light-blue' | 'light-emerald' | 'light-purple' | 'light-coral' | 'solid-white' | 'solid-slate' | 'solid-blue';
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  cardAccent: CardAccent;
+  setCardAccent: (accent: CardAccent) => void;
+  bgGradient: BgGradient;
+  setBgGradient: (grad: BgGradient) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -13,6 +19,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('theme');
     return (saved as Theme) || 'light';
+  });
+
+  const [cardAccent, setCardAccentState] = useState<CardAccent>(() => {
+    const saved = localStorage.getItem('card_accent');
+    return (saved as CardAccent) || 'none';
+  });
+
+  const [bgGradient, setBgGradientState] = useState<BgGradient>(() => {
+    const saved = localStorage.getItem('bg_gradient');
+    return (saved as BgGradient) || 'default';
   });
 
   useEffect(() => {
@@ -41,8 +57,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 450);
   };
 
+  const setCardAccent = (accent: CardAccent) => {
+    setCardAccentState(accent);
+    localStorage.setItem('card_accent', accent);
+  };
+
+  const setBgGradient = (grad: BgGradient) => {
+    setBgGradientState(grad);
+    localStorage.setItem('bg_gradient', grad);
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{
+      theme,
+      toggleTheme,
+      cardAccent,
+      setCardAccent,
+      bgGradient,
+      setBgGradient
+    }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -55,3 +88,4 @@ export const useTheme = () => {
   }
   return context;
 };
+

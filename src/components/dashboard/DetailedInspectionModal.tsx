@@ -291,15 +291,15 @@ export const DetailedInspectionModal: React.FC<DetailedInspectionModalProps> = (
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-1 px-4 md:px-1 mx-[-16px] md:mx-0 snap-x snap-mandatory">
           {tabConfig.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={cn(
-                "px-4 py-3 rounded-xl text-[14px] font-medium flex items-center gap-2 transition-all shrink-0 border",
+                "px-5 py-2.5 rounded-full text-[13px] font-bold flex items-center gap-2 transition-all shrink-0 border snap-start",
                 activeTab === tab.id 
-                  ? "bg-text-main text-bg border-text-main" 
+                  ? "bg-text-main text-bg border-text-main shadow-sm" 
                   : "bg-surface-card text-text-muted border-border-subtle/50 hover:bg-bg-secondary"
               )}
             >

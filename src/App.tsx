@@ -22,11 +22,13 @@ const StaffReports = lazy(() => import('./pages/StaffReports'));
 const AssetLibrary = lazy(() => import('./pages/AssetLibrary'));
 const SupportInbox = lazy(() => import('./pages/SupportInbox'));
 const Login = lazy(() => import('./pages/Login'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 const SoldArchive = lazy(() => import('./pages/SoldArchive'));
 const SoldArchiveDetail = lazy(() => import('./pages/SoldArchiveDetail'));
 const CustomOrders = lazy(() => import('./pages/CustomOrders'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const FinanceManager = lazy(() => import('./pages/FinanceManager'));
+const Settings = lazy(() => import('./pages/Settings'));
 import { AppShell } from './components/ui/AppShell';
 import { API_URL } from './lib/api';
 import { initializePushNotifications } from './lib/push';
@@ -231,6 +233,7 @@ function App() {
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-bg-base text-text-muted">Loading page…</div>}>
         <Routes>
           <Route path="/login" element={(session && role) ? <Navigate to="/" replace /> : <Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/acquisitions" element={<ProtectedRoute><Acquisitions /></ProtectedRoute>} />
           <Route path="/inspections" element={<ProtectedRoute><InspectionReports /></ProtectedRoute>} />
@@ -248,6 +251,7 @@ function App() {
           <Route path="/archive/:id" element={<ProtectedRoute><SoldArchiveDetail /></ProtectedRoute>} />
           <Route path="/custom-orders" element={<ProtectedRoute><CustomOrders /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         </Routes>
       </Suspense>
       <PwaInstallPrompt />

@@ -14,6 +14,8 @@ import { Badge } from "../components/ui/Badge";
 import { Tooltip } from "../components/ui/Tooltip";
 import { cn } from "../lib/utils";
 import { SkeletonKpi } from "../components/ui/Skeleton";
+import { useTheme } from "../lib/ThemeContext";
+import { toast } from "react-hot-toast";
 
 // Dashboard Sub-components
 import { GeneralManagerView } from "../components/dashboard/GeneralManagerView";
@@ -28,6 +30,74 @@ type RoleType = "USER" | "BROKER" | "STAFF" | "DISTRICT_MANAGER" | "GENERAL_MANA
 
 export default function Dashboard() {
   const { session } = useAuth();
+  const { cardAccent } = useTheme();
+
+  // Map cardAccent to CSS classes for the DM KPI cards
+  const getCardClasses = (cardColor: string) => {
+    let containerClass = 'bg-surface-card border border-border-subtle/30 shadow-sm';
+    let titleClass = 'text-text-muted';
+    let valueClass = 'text-text-main';
+    let iconClass = '';
+
+    if (cardAccent.startsWith('solid-')) {
+      titleClass = 'text-white/70';
+      valueClass = 'text-white';
+      if (cardAccent === 'solid-blue') {
+        containerClass = 'bg-blue-600 border-blue-700 shadow-[0_10px_20px_rgba(37,99,235,0.2)]';
+        iconClass = 'bg-white/20 text-white';
+      } else if (cardAccent === 'solid-green') {
+        containerClass = 'bg-emerald-600 border-emerald-700 shadow-[0_10px_20px_rgba(5,150,105,0.2)]';
+        iconClass = 'bg-white/20 text-white';
+      } else if (cardAccent === 'solid-amber') {
+        containerClass = 'bg-amber-500 border-amber-600 shadow-[0_10px_20px_rgba(245,158,11,0.2)]';
+        iconClass = 'bg-white/20 text-white';
+      } else if (cardAccent === 'solid-rose') {
+        containerClass = 'bg-rose-600 border-rose-700 shadow-[0_10px_20px_rgba(225,29,72,0.2)]';
+        iconClass = 'bg-white/20 text-white';
+      } else if (cardAccent === 'solid-purple') {
+        containerClass = 'bg-purple-600 border-purple-700 shadow-[0_10px_20px_rgba(147,51,234,0.2)]';
+        iconClass = 'bg-white/20 text-white';
+      }
+    } else if (cardAccent.startsWith('light-')) {
+      if (cardAccent === 'light-blue') {
+        containerClass = 'bg-blue-50/70 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40';
+        titleClass = 'text-blue-700/80 dark:text-blue-300/80';
+        valueClass = 'text-blue-950 dark:text-blue-100';
+        iconClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300';
+      } else if (cardAccent === 'light-green') {
+        containerClass = 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40';
+        titleClass = 'text-emerald-700/80 dark:text-emerald-300/80';
+        valueClass = 'text-emerald-950 dark:text-emerald-100';
+        iconClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300';
+      } else if (cardAccent === 'light-amber') {
+        containerClass = 'bg-amber-50/70 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40';
+        titleClass = 'text-amber-700/80 dark:text-amber-300/80';
+        valueClass = 'text-amber-950 dark:text-amber-100';
+        iconClass = 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300';
+      } else if (cardAccent === 'light-rose') {
+        containerClass = 'bg-rose-50/70 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/40';
+        titleClass = 'text-rose-700/80 dark:text-rose-300/80';
+        valueClass = 'text-rose-950 dark:text-rose-100';
+        iconClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300';
+      } else if (cardAccent === 'light-purple') {
+        containerClass = 'bg-purple-50/70 border-purple-200 dark:bg-purple-950/20 dark:border-purple-900/40';
+        titleClass = 'text-purple-700/80 dark:text-purple-300/80';
+        valueClass = 'text-purple-950 dark:text-purple-100';
+        iconClass = 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300';
+      }
+    } else {
+      // none / default
+      if (cardColor === 'blue') {
+        iconClass = 'bg-primary-main/10 text-primary-main';
+      } else if (cardColor === 'green') {
+        iconClass = 'bg-success/10 text-success';
+      } else if (cardColor === 'amber') {
+        iconClass = 'bg-warning/10 text-warning';
+      }
+    }
+
+    return { containerClass, titleClass, valueClass, iconClass };
+  };
   // Always derive role from the JWT-backed session profile — never trust localStorage alone.
   // localStorage('admin_role') may be stale, missing, or from a previous login.
   const role = (
@@ -160,11 +230,13 @@ export default function Dashboard() {
        await api.patch(`/trade-in-requests/${tradeInId}/status`, { status: 'INSPECTION_PENDING' });
        apiCache.clear();
        setTradeIns(tradeIns.map(t => t.id === tradeInId ? { ...t, status: 'INSPECTION_PENDING' } : t));
+       toast.success("Task assigned successfully!");
     } catch(e) {
        console.error("Assignment failed", e);
+       toast.error("Failed to assign task.");
     } finally {
        setIsSubmitting(false);
-    }
+     }
   };
 
   const escalateToGM = async (tradeInId: string) => {
@@ -173,8 +245,10 @@ export default function Dashboard() {
        await api.patch(`/trade-in-requests/${tradeInId}/status`, { status: 'ESCALATED_TO_GM' });
        apiCache.clear();
        setTradeIns(tradeIns.map(t => t.id === tradeInId ? { ...t, status: 'ESCALATED_TO_GM' } : t));
+       toast.success("Lead escalated to General Manager!");
     } catch(e) {
        console.error(e);
+       toast.error("Failed to escalate lead.");
     } finally {
        setIsSubmitting(false);
     }
@@ -187,8 +261,10 @@ export default function Dashboard() {
        await api.post(`/vehicles/promote/${tradeInId}`, { retailPrice: price });
        apiCache.clear();
        setTradeIns(tradeIns.map(t => t.id === tradeInId ? { ...t, status: 'ACCEPTED' } : t));
+       toast.success("Vehicle approved and listed to showroom!");
     } catch(e) {
        console.error(e);
+       toast.error("Failed to list vehicle.");
     } finally {
        setIsSubmitting(false);
     }
@@ -200,8 +276,10 @@ export default function Dashboard() {
       await api.patch(`/trade-in-requests/${id}/approve`, { offerPrice: price });
       apiCache.clear();
       setTradeIns(tradeIns.map(t => t.id === id ? { ...t, status: 'OFFER_MADE', final_dealer_offer_etb: price } : t));
+      toast.success("Trade-in offer authorized successfully!");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to authorize trade-in offer.");
     } finally {
       setIsSubmitting(false);
     }
@@ -213,8 +291,10 @@ export default function Dashboard() {
       await api.patch(`/trade-in-requests/${id}/reject`, { reason });
       apiCache.clear();
       setTradeIns(tradeIns.map(t => t.id === id ? { ...t, status: 'REJECTED' } : t));
+      toast.success("Lead rejected.");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to reject lead.");
     } finally {
       setIsSubmitting(false);
     }
@@ -226,8 +306,10 @@ export default function Dashboard() {
       await api.patch(`/trade-in-requests/${id}/status`, { status: 'CLARIFICATION_REQUIRED', notes: reason });
       apiCache.clear();
       setTradeIns(tradeIns.map(t => t.id === id ? { ...t, status: 'CLARIFICATION_REQUIRED' } : t));
+      toast.success("Clarification request sent.");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to send clarification request.");
     } finally {
       setIsSubmitting(false);
     }
@@ -238,8 +320,14 @@ export default function Dashboard() {
     if (newRate) {
       setIsSubmitting(true);
       api.patch('/settings/exchange-rate', { rate: newRate })
-        .then(() => setExchangeRate(newRate))
-        .catch(console.error)
+        .then(() => {
+          setExchangeRate(newRate);
+          toast.success("Exchange rate updated!");
+        })
+        .catch((e) => {
+          console.error(e);
+          toast.error("Failed to update exchange rate.");
+        })
         .finally(() => setIsSubmitting(false));
     }
   };
@@ -251,8 +339,12 @@ export default function Dashboard() {
       .then(() => {
         apiCache.clear();
         setBudgets(budgets.map(bg => bg.id === id ? { ...bg, status: 'DISBURSED' } : bg));
+        toast.success("Funds disbursed successfully!");
       })
-      .catch(console.error)
+      .catch((e) => {
+        console.error(e);
+        toast.error("Disbursement failed.");
+      })
       .finally(() => setIsSubmitting(false));
   };
 
@@ -323,7 +415,7 @@ export default function Dashboard() {
 
       {/* ── MOBILE STICKY BRANCH BANNER (GM only) ───────────────────── */}
       {role === 'GENERAL_MANAGER' && (
-        <div className="md:hidden sticky top-0 z-40 bg-bg-base -mx-4 px-4 pb-2">
+        <div className="md:hidden sticky top-0 z-40 bg-bg-base -mx-4 px-4 pb-2 -mt-1">
           <div className="h-[40px] flex items-center">
             <button
               onClick={() => setIsBranchPickerOpen(true)}
@@ -346,8 +438,8 @@ export default function Dashboard() {
         </div>
       )}
       {/* ─── DESKTOP STICKY HEADER ─── */}
-      <div className="hidden md:block sticky top-0 z-30 -mx-4 md:-mx-8 -mt-5 md:-mt-8 border-b border-border-subtle/30 bg-bg-base/95 px-4 py-4 shadow-sm backdrop-blur-md md:px-8">
-        <div className="rounded-[28px] border border-border-subtle/70 bg-surface-card/95 p-4 shadow-[0_18px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl md:p-5">
+      <div className="hidden md:block sticky top-0 z-30 -mx-4 md:-mx-8 -mt-1 md:-mt-4 border-b border-border-subtle/30 bg-bg-base px-4 py-4 shadow-sm md:px-8">
+        <div className="rounded-[28px] border border-border-subtle/70 bg-surface-card p-4 shadow-[0_18px_30px_-18px_rgba(15,23,42,0.35)] md:p-5">
           <div className="flex items-center justify-between gap-4">
              <div className="space-y-1">
                 <p className="text-[13px] text-text-muted/60">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
@@ -447,45 +539,65 @@ export default function Dashboard() {
                 </>
               ) : (
                 <>
-                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                    <div className="w-10 h-10 bg-primary-main/10 rounded-xl flex items-center justify-center text-primary-main">
-                      <ClipboardCheck size={20} />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-text-main tracking-tight">{pendingReviewCount}</p>
-                      <p className="text-[13px] text-text-muted mt-0.5">Pending Review</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const classes = getCardClasses('blue');
+                    return (
+                      <div className={cn("rounded-2xl p-4 flex flex-col gap-3 transition-all duration-300", classes.containerClass)}>
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300", classes.iconClass)}>
+                          <ClipboardCheck size={20} />
+                        </div>
+                        <div>
+                          <p className={cn("text-2xl font-bold tracking-tight transition-all duration-300", classes.valueClass)}>{pendingReviewCount}</p>
+                          <p className={cn("text-[13px] mt-0.5 transition-all duration-300", classes.titleClass)}>Pending Review</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                    <div className="w-10 h-10 bg-success/10 rounded-xl flex items-center justify-center text-success">
-                      <CarFront size={20} />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-text-main tracking-tight">{showroomCount}</p>
-                      <p className="text-[13px] text-text-muted mt-0.5">Showroom Assets</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const classes = getCardClasses('green');
+                    return (
+                      <div className={cn("rounded-2xl p-4 flex flex-col gap-3 transition-all duration-300", classes.containerClass)}>
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300", classes.iconClass)}>
+                          <CarFront size={20} />
+                        </div>
+                        <div>
+                          <p className={cn("text-2xl font-bold tracking-tight transition-all duration-300", classes.valueClass)}>{showroomCount}</p>
+                          <p className={cn("text-[13px] mt-0.5 transition-all duration-300", classes.titleClass)}>Showroom Assets</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                    <div className="w-10 h-10 bg-warning/10 rounded-xl flex items-center justify-center text-warning">
-                      <Zap size={20} />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-text-main tracking-tight">{newLeadCount}</p>
-                      <p className="text-[13px] text-text-muted mt-0.5">New Leads</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const classes = getCardClasses('amber');
+                    return (
+                      <div className={cn("rounded-2xl p-4 flex flex-col gap-3 transition-all duration-300", classes.containerClass)}>
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300", classes.iconClass)}>
+                          <Zap size={20} />
+                        </div>
+                        <div>
+                          <p className={cn("text-2xl font-bold tracking-tight transition-all duration-300", classes.valueClass)}>{newLeadCount}</p>
+                          <p className={cn("text-[13px] mt-0.5 transition-all duration-300", classes.titleClass)}>New Leads</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <div className="bg-surface-card rounded-2xl border border-border-subtle/30 p-4 flex flex-col gap-3">
-                    <div className="w-10 h-10 bg-primary-main/10 rounded-xl flex items-center justify-center text-primary-main">
-                      <Users size={20} />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-text-main tracking-tight">{branchStaff.filter(s => s.role === 'STAFF').length}</p>
-                      <p className="text-[13px] text-text-muted mt-0.5">Branch Staff</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const classes = getCardClasses('blue');
+                    return (
+                      <div className={cn("rounded-2xl p-4 flex flex-col gap-3 transition-all duration-300", classes.containerClass)}>
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300", classes.iconClass)}>
+                          <Users size={20} />
+                        </div>
+                        <div>
+                          <p className={cn("text-2xl font-bold tracking-tight transition-all duration-300", classes.valueClass)}>{branchStaff.filter(s => s.role === 'STAFF').length}</p>
+                          <p className={cn("text-[13px] mt-0.5 transition-all duration-300", classes.titleClass)}>Branch Staff</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </>
               )}
             </div>

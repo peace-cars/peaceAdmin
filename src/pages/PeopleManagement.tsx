@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, MapPin, Power, X, Users, ShieldCheck, Zap, Building2, Edit, Network, Phone, Star } from 'lucide-react';
+import { UserPlus, MapPin, Power, X, Users, ShieldCheck, Zap, Building2, Edit, Network, Phone, Star, Trash2 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { api } from '../lib/api';
 import { fetchWithCache, apiCache } from '../lib/cache';
@@ -13,6 +13,7 @@ import { cn } from '../lib/utils';
 
 export default function PeopleManagement() {
   const { session } = useAuth();
+  const role = localStorage.getItem('admin_role') || 'DISTRICT_MANAGER';
   const [people, setPeople] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   
@@ -61,7 +62,7 @@ export default function PeopleManagement() {
       };
 
       if (form.branchId && form.branchId.trim() !== '') {
-        payload.branch_id = form.branchId;
+        payload.locationId = form.branchId;
       }
 
       const data: any = await api.post('/people', payload);
@@ -95,7 +96,7 @@ export default function PeopleManagement() {
       };
 
       if (form.branchId && form.branchId.trim() !== '') {
-        payload.branch_id = form.branchId;
+        payload.locationId = form.branchId;
       }
 
       await api.patch(`/people/${editingPerson.id}`, payload);
@@ -155,6 +156,22 @@ export default function PeopleManagement() {
     }
   };
 
+  const deletePerson = async (id: string) => {
+    if (!window.confirm('Are you sure you want to completely obliterate this staff member? This cannot be undone.')) return;
+    setIsSubmitting(true);
+    try {
+      const res = await api.delete<any>(`/people/${id}`);
+      if (res.success) {
+        apiCache.clear();
+        setPeople(prev => prev.filter(p => p.id !== id));
+      } else alert(res.message || 'Failed to delete staff member');
+    } catch (err: any) {
+      alert(err?.message || 'Error deleting staff member');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const activeStaff = people.filter((p) => p.isActive).length;
   const dmCount = people.filter((p) => p.role === 'DISTRICT_MANAGER').length;
 
@@ -188,13 +205,17 @@ export default function PeopleManagement() {
       {/* Main Content */}
       <DesktopTable 
         people={people} 
+        role={role}
         onEdit={openEdit}
         onToggleActive={toggleActive}
+        onDelete={deletePerson}
       />
       <MobileGrid 
         people={people}
+        role={role}
         onEdit={openEdit}
         onToggleActive={toggleActive}
+        onDelete={deletePerson}
       />
 
       {/* Action Modal */}
@@ -233,7 +254,7 @@ const MobileKpis = ({ people, activeStaff, dmCount, networkHealth }: any) => (
   </div>
 );
 
-const DesktopTable = ({ people, onEdit, onToggleActive }: any) => (
+const DesktopTable = ({ people, role, onEdit, onToggleActive, onDelete }: any) => (
   <div className="bg-surface-card rounded-[24px] shadow-sm border border-border-subtle/30 p-2 hidden md:block">
     <div className="flex flex-col gap-1.5 p-6 border-b border-border-subtle/30">
       <h2 className="text-[14px] font-black text-text-main">Global Registry Ledger</h2>
@@ -298,10 +319,17 @@ const DesktopTable = ({ people, onEdit, onToggleActive }: any) => (
                     </button>
                   </Tooltip>
                   <Tooltip content={p.isActive ? "Suspend Access" : "Restore Access"}>
-                    <button onClick={() => onToggleActive(p.id)} disabled={p.isSubmitting} className={cn("w-9 h-9 flex items-center justify-center border rounded-xl transition-colors active:scale-95 shadow-sm disabled:opacity-50", p.isActive ? "bg-bg-base border-border-subtle/30 text-error-main hover:bg-error-main/10 hover:border-error-main/30" : "bg-success text-white border-success/20 hover:bg-success/90")}>
+                    <button onClick={() => onToggleActive(p.id)} disabled={p.isSubmitting} className={cn("w-9 h-9 flex items-center justify-center border rounded-xl transition-colors active:scale-95 shadow-sm disabled:opacity-50", p.isActive ? "bg-bg-base border-border-subtle/30 text-warning hover:bg-warning/10 hover:border-warning/30" : "bg-success text-white border-success/20 hover:bg-success/90")}>
                       <Power size={14} />
                     </button>
                   </Tooltip>
+                  {role === 'GENERAL_MANAGER' && (
+                    <Tooltip content="Obliterate User">
+                      <button onClick={() => onDelete(p.id)} disabled={p.isSubmitting} className="w-9 h-9 flex items-center justify-center bg-bg-base border border-border-subtle/30 rounded-xl text-error-main hover:bg-error-main/10 hover:border-error-main/30 transition-colors active:scale-95 shadow-sm disabled:opacity-50 ml-1">
+                        <Trash2 size={14} />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               </td>
             </tr>
@@ -312,7 +340,7 @@ const DesktopTable = ({ people, onEdit, onToggleActive }: any) => (
   </div>
 );
 
-const MobileGrid = ({ people, onEdit, onToggleActive }: any) => (
+const MobileGrid = ({ people, role, onEdit, onToggleActive, onDelete }: any) => (
   <div className="flex flex-col gap-3 md:hidden">
     <div className="flex items-center justify-between px-1">
       <p className="text-[15px] font-black text-text-main">Registry Queue</p>
@@ -363,9 +391,14 @@ const MobileGrid = ({ people, onEdit, onToggleActive }: any) => (
             <button onClick={() => onEdit(p)} disabled={p.isSubmitting} className="flex-1 flex justify-center items-center gap-2 h-11 bg-surface-card border border-border-subtle/30 rounded-[12px] text-text-main font-bold text-[12px] hover:bg-bg-secondary shadow-sm disabled:opacity-50">
               <Edit size={14} /> Modify Data
             </button>
-            <button onClick={() => onToggleActive(p.id)} disabled={p.isSubmitting} className={cn("flex items-center justify-center w-12 h-11 border rounded-[12px] shadow-sm disabled:opacity-50", p.isActive ? "bg-surface-card border-border-subtle/30 text-error-main hover:bg-error-main/10" : "bg-success text-white border-success/20 hover:bg-success/90")}>
+            <button onClick={() => onToggleActive(p.id)} disabled={p.isSubmitting} className={cn("flex items-center justify-center w-12 h-11 border rounded-[12px] shadow-sm disabled:opacity-50", p.isActive ? "bg-surface-card border-border-subtle/30 text-warning hover:bg-warning/10" : "bg-success text-white border-success/20 hover:bg-success/90")}>
               <Power size={14} />
             </button>
+            {role === 'GENERAL_MANAGER' && (
+              <button onClick={() => onDelete(p.id)} disabled={p.isSubmitting} className="flex items-center justify-center w-12 h-11 border rounded-[12px] shadow-sm disabled:opacity-50 bg-surface-card border-border-subtle/30 text-error-main hover:bg-error-main/10">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         </div>
       ))}

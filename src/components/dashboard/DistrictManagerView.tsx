@@ -95,7 +95,7 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="bg-surface-card border border-border-subtle/30 rounded-xl p-1 flex gap-0.5 overflow-x-auto no-scrollbar">
+      <div className="bg-surface-card border border-border-subtle/30 rounded-[100px] p-1.5 flex gap-1 overflow-x-auto no-scrollbar mx-[-12px] md:mx-0 px-3 md:px-1.5 snap-x snap-mandatory">
         {tabs.map((tab) => {
           const count = currentLeads.filter(tab.filter).length;
           return (
@@ -103,9 +103,9 @@ export const DistrictManagerView: React.FC<DistrictManagerViewProps> = ({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "whitespace-nowrap px-4 md:flex-1 py-2.5 text-[13px] font-medium rounded-lg transition-all flex items-center justify-center gap-2 shrink-0",
+                "whitespace-nowrap px-4 md:flex-1 py-2.5 text-[13px] font-medium rounded-full transition-all flex items-center justify-center gap-2 shrink-0 snap-start",
                 activeTab === tab.id 
-                  ? "bg-text-main text-bg" 
+                  ? "bg-text-main text-bg shadow-sm" 
                   : "text-text-muted hover:text-text-main hover:bg-bg-secondary"
               )}
             >

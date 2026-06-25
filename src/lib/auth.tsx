@@ -27,6 +27,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ error?: string }>;
   register: (email: string, password: string, fullName: string, role: string, locationId?: string) => Promise<{ error?: string }>;
+  loginWithGoogle: () => Promise<{ error?: string }>;
   logout: () => void;
 }
 
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => ({}),
   register: async () => ({}),
+  loginWithGoogle: async () => ({}),
   logout: () => {},
 });
 
@@ -201,7 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // (cross-origin admin SPA cannot rely on httpOnly cookies across ports)
         access_token: payload.session?.access_token || '',
         refresh_token: payload.session?.refresh_token || '',
-        expires_at: payload.session.expires_at,
+        expires_at: payload.session?.expires_at || Math.floor(Date.now() / 1000) + 3600,
         user: payload.user,
         profile: payload.profile,
       };
@@ -283,8 +285,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
   };
 
+  const loginWithGoogle = async (): Promise<{ error?: string }> => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) return { error: error.message };
+      return {};
+    } catch (err: any) {
+      return { error: err.message || 'Network error' };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ session, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ session, loading, login, register, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

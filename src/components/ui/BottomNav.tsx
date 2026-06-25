@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Package, TrendingUp, DollarSign, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Package, TrendingUp, Settings, MessageSquare } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface BottomNavProps {
@@ -9,11 +9,11 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ role }) => {
   const navItems = [
-    { id: 'dash', label: 'Home', icon: LayoutDashboard, path: '/', exact: true },
-    { id: 'pipeline', label: 'Pipeline', icon: TrendingUp, path: '/acquisitions' },
-    { id: 'messages', label: 'Messages', icon: MessageSquare, path: '/inbox' },
-    { id: 'inventory', label: 'Inventory', icon: Package, path: '/inventory' },
-    { id: 'finances', label: 'Finance', icon: DollarSign, path: '/budgets' },
+    { id: 'dash',      label: 'Home',     icon: LayoutDashboard, path: '/',            exact: true },
+    { id: 'pipeline', label: 'Pipeline', icon: TrendingUp,       path: '/acquisitions' },
+    { id: 'messages', label: 'Messages', icon: MessageSquare,    path: '/inbox' },
+    { id: 'inventory',label: 'Inventory',icon: Package,          path: '/inventory' },
+    { id: 'settings', label: 'Settings', icon: Settings,         path: '/settings' },
   ];
 
   return (

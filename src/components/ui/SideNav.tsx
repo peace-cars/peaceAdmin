@@ -18,13 +18,10 @@ import {
   MessageSquare,
   Bell,
   X,
-  Moon,
-  Sun,
-  Globe,
+  Settings,
   Download,
 } from 'lucide-react';
 import { useTheme } from '../../lib/ThemeContext';
-import { useTranslation } from 'react-i18next';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 import logo from '../../assets/logo.png';
@@ -45,8 +42,6 @@ export const SideNav: React.FC<SideNavProps> = ({
   onNavigate,
 }) => {
   const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
-  const { i18n } = useTranslation();
   const { isInstallable, installApp } = usePwaInstall();
   const roleLabel = role?.replace(/_/g, ' ') || 'Manager';
 
@@ -86,9 +81,6 @@ export const SideNav: React.FC<SideNavProps> = ({
     );
   };
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-  };
 
   return (
     <aside
@@ -168,6 +160,7 @@ export const SideNav: React.FC<SideNavProps> = ({
         />
         <NavItem to="/inbox" icon={MessageSquare} label="Inbox" />
         <NavItem to="/notifications" icon={Bell} label="Registry Pulse" />
+        <NavItem to="/settings" icon={Settings} label="Settings" />
 
         {!isCollapsed && (
           <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted px-3 pt-5 pb-2">
@@ -229,22 +222,20 @@ export const SideNav: React.FC<SideNavProps> = ({
         )}
       </nav>
 
-      {/* Settings row */}
+      {/* Settings shortcut footer */}
       {!isCollapsed && (
-        <div className="flex items-center gap-2 px-2 py-3 border-t border-border-subtle">
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl hover:bg-white/10 transition-all active:scale-95 text-text-secondary"
+        <div className="px-2 py-3 border-t border-border-subtle">
+          <Link
+            to="/settings"
+            onClick={() => onNavigate?.()}
+            className={clsx(
+              'flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all border border-transparent text-text-secondary hover:bg-white/10 hover:text-text-main hover:border-white/10',
+              location.pathname === '/settings' && 'bg-primary-main text-white font-semibold shadow-lg shadow-primary-main/20',
+            )}
           >
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
-          <button
-            onClick={() => changeLanguage(i18n.language === 'en' ? 'am' : 'en')}
-            className="p-2 rounded-xl hover:bg-white/10 transition-all active:scale-95 text-text-secondary flex items-center gap-1"
-          >
-            <Globe size={18} />
-            <span className="text-[11px] font-medium uppercase">{i18n.language}</span>
-          </button>
+            <Settings size={18} className="shrink-0" />
+            <span className="text-[14px] font-medium">Settings</span>
+          </Link>
         </div>
       )}
 
